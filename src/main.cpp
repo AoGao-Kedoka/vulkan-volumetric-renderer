@@ -10,8 +10,6 @@
 
 #include <VkBootstrap.h>
 
-#include "example_config.h"
-
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 struct Init {
@@ -218,8 +216,8 @@ VkShaderModule createShaderModule(Init& init, const std::vector<char>& code) {
 }
 
 int create_graphics_pipeline(Init& init, RenderData& data) {
-    auto vert_code = readFile(std::string(EXAMPLE_BUILD_DIRECTORY) + "/vert.spv");
-    auto frag_code = readFile(std::string(EXAMPLE_BUILD_DIRECTORY) + "/frag.spv");
+    auto vert_code = readFile("./shaders/triangle_vert.spv");
+    auto frag_code = readFile("./shaders/triangle_frag.spv");
 
     VkShaderModule vert_module = createShaderModule(init, vert_code);
     VkShaderModule frag_module = createShaderModule(init, frag_code);
