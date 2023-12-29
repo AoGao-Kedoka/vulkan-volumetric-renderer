@@ -13,7 +13,7 @@
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 struct Init {
-    GLFWwindow* window;
+    GLFWwindow *window;
     vkb::Instance instance;
     vkb::InstanceDispatchTable inst_disp;
     VkSurfaceKHR surface;
@@ -44,7 +44,8 @@ struct RenderData {
     size_t current_frame = 0;
 };
 
-GLFWwindow* create_window_glfw(const char* window_name = "", bool resize = true) {
+GLFWwindow *create_window_glfw(const char *window_name = "", bool resize = true)
+{
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     if (!resize) glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -52,16 +53,20 @@ GLFWwindow* create_window_glfw(const char* window_name = "", bool resize = true)
     return glfwCreateWindow(1024, 1024, window_name, NULL, NULL);
 }
 
-void destroy_window_glfw(GLFWwindow* window) {
+void destroy_window_glfw(GLFWwindow *window)
+{
     glfwDestroyWindow(window);
     glfwTerminate();
 }
 
-VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllocationCallbacks* allocator = nullptr) {
+VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow *window,
+                                 VkAllocationCallbacks *allocator = nullptr)
+{
     VkSurfaceKHR surface = VK_NULL_HANDLE;
-    VkResult err = glfwCreateWindowSurface(instance, window, allocator, &surface);
+    VkResult err =
+        glfwCreateWindowSurface(instance, window, allocator, &surface);
     if (err) {
-        const char* error_msg;
+        const char *error_msg;
         int ret = glfwGetError(&error_msg);
         if (ret != 0) {
             std::cout << ret << " ";
@@ -73,11 +78,14 @@ VkSurfaceKHR create_surface_glfw(VkInstance instance, GLFWwindow* window, VkAllo
     return surface;
 }
 
-int device_initialization(Init& init) {
+int device_initialization(Init& init)
+{
     init.window = create_window_glfw("Vulkan Triangle", true);
 
     vkb::InstanceBuilder instance_builder;
-    auto instance_ret = instance_builder.use_default_debug_messenger().request_validation_layers().build();
+    auto instance_ret = instance_builder.use_default_debug_messenger()
+                            .request_validation_layers()
+                            .build();
     if (!instance_ret) {
         std::cout << instance_ret.error().message() << "\n";
         return -1;
@@ -89,14 +97,15 @@ int device_initialization(Init& init) {
     init.surface = create_surface_glfw(init.instance, init.window);
 
     vkb::PhysicalDeviceSelector phys_device_selector(init.instance);
-    auto phys_device_ret = phys_device_selector.set_surface(init.surface).select();
+    auto phys_device_ret =
+        phys_device_selector.set_surface(init.surface).select();
     if (!phys_device_ret) {
         std::cout << phys_device_ret.error().message() << "\n";
         return -1;
     }
     vkb::PhysicalDevice physical_device = phys_device_ret.value();
 
-    vkb::DeviceBuilder device_builder{ physical_device };
+    vkb::DeviceBuilder device_builder{physical_device};
     auto device_ret = device_builder.build();
     if (!device_ret) {
         std::cout << device_ret.error().message() << "\n";
@@ -109,12 +118,13 @@ int device_initialization(Init& init) {
     return 0;
 }
 
-int create_swapchain(Init& init) {
-
-    vkb::SwapchainBuilder swapchain_builder{ init.device };
+int create_swapchain(Init& init)
+{
+    vkb::SwapchainBuilder swapchain_builder{init.device};
     auto swap_ret = swapchain_builder.set_old_swapchain(init.swapchain).build();
     if (!swap_ret) {
-        std::cout << swap_ret.error().message() << " " << swap_ret.vk_result() << "\n";
+        std::cout << swap_ret.error().message() << " " << swap_ret.vk_result()
+                  << "\n";
         return -1;
     }
     vkb::destroy_swapchain(init.swapchain);
@@ -122,24 +132,28 @@ int create_swapchain(Init& init) {
     return 0;
 }
 
-int get_queues(Init& init, RenderData& data) {
+int get_queues(Init& init, RenderData& data)
+{
     auto gq = init.device.get_queue(vkb::QueueType::graphics);
     if (!gq.has_value()) {
-        std::cout << "failed to get graphics queue: " << gq.error().message() << "\n";
+        std::cout << "failed to get graphics queue: " << gq.error().message()
+                  << "\n";
         return -1;
     }
     data.graphics_queue = gq.value();
 
     auto pq = init.device.get_queue(vkb::QueueType::present);
     if (!pq.has_value()) {
-        std::cout << "failed to get present queue: " << pq.error().message() << "\n";
+        std::cout << "failed to get present queue: " << pq.error().message()
+                  << "\n";
         return -1;
     }
     data.present_queue = pq.value();
     return 0;
 }
 
-int create_render_pass(Init& init, RenderData& data) {
+int create_render_pass(Init& init, RenderData& data)
+{
     VkAttachmentDescription color_attachment = {};
     color_attachment.format = init.swapchain.image_format;
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -165,7 +179,8 @@ int create_render_pass(Init& init, RenderData& data) {
     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency.srcAccessMask = 0;
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                               VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     VkRenderPassCreateInfo render_pass_info = {};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -176,14 +191,16 @@ int create_render_pass(Init& init, RenderData& data) {
     render_pass_info.dependencyCount = 1;
     render_pass_info.pDependencies = &dependency;
 
-    if (init.disp.createRenderPass(&render_pass_info, nullptr, &data.render_pass) != VK_SUCCESS) {
+    if (init.disp.createRenderPass(&render_pass_info, nullptr,
+                                   &data.render_pass) != VK_SUCCESS) {
         std::cout << "failed to create render pass\n";
-        return -1; // failed to create render pass!
+        return -1;  // failed to create render pass!
     }
     return 0;
 }
 
-std::vector<char> readFile(const std::string& filename) {
+std::vector<char> readFile(const std::string& filename)
+{
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
     if (!file.is_open()) {
@@ -201,21 +218,24 @@ std::vector<char> readFile(const std::string& filename) {
     return buffer;
 }
 
-VkShaderModule createShaderModule(Init& init, const std::vector<char>& code) {
+VkShaderModule createShaderModule(Init& init, const std::vector<char>& code)
+{
     VkShaderModuleCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     create_info.codeSize = code.size();
-    create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+    create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
 
     VkShaderModule shaderModule;
-    if (init.disp.createShaderModule(&create_info, nullptr, &shaderModule) != VK_SUCCESS) {
-        return VK_NULL_HANDLE; // failed to create shader module
+    if (init.disp.createShaderModule(&create_info, nullptr, &shaderModule) !=
+        VK_SUCCESS) {
+        return VK_NULL_HANDLE;  // failed to create shader module
     }
 
     return shaderModule;
 }
 
-int create_graphics_pipeline(Init& init, RenderData& data) {
+int create_graphics_pipeline(Init& init, RenderData& data)
+{
     auto vert_code = readFile("./shaders/triangle_vert.spv");
     auto frag_code = readFile("./shaders/triangle_frag.spv");
 
@@ -223,7 +243,7 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     VkShaderModule frag_module = createShaderModule(init, frag_code);
     if (vert_module == VK_NULL_HANDLE || frag_module == VK_NULL_HANDLE) {
         std::cout << "failed to create shader module\n";
-        return -1; // failed to create shader modules
+        return -1;  // failed to create shader modules
     }
 
     VkPipelineShaderStageCreateInfo vert_stage_info = {};
@@ -238,15 +258,18 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     frag_stage_info.module = frag_module;
     frag_stage_info.pName = "main";
 
-    VkPipelineShaderStageCreateInfo shader_stages[] = { vert_stage_info, frag_stage_info };
+    VkPipelineShaderStageCreateInfo shader_stages[] = {vert_stage_info,
+                                                       frag_stage_info};
 
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
-    vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertex_input_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input_info.vertexBindingDescriptionCount = 0;
     vertex_input_info.vertexAttributeDescriptionCount = 0;
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
-    input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    input_assembly.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     input_assembly.primitiveRestartEnable = VK_FALSE;
 
@@ -259,18 +282,20 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor = {};
-    scissor.offset = { 0, 0 };
+    scissor.offset = {0, 0};
     scissor.extent = init.swapchain.extent;
 
     VkPipelineViewportStateCreateInfo viewport_state = {};
-    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewport_state.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewport_state.viewportCount = 1;
     viewport_state.pViewports = &viewport;
     viewport_state.scissorCount = 1;
     viewport_state.pScissors = &scissor;
 
     VkPipelineRasterizationStateCreateInfo rasterizer = {};
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
@@ -280,17 +305,20 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     rasterizer.depthBiasEnable = VK_FALSE;
 
     VkPipelineMultisampleStateCreateInfo multisampling = {};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
     multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
     colorBlendAttachment.colorWriteMask =
-        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_FALSE;
 
     VkPipelineColorBlendStateCreateInfo color_blending = {};
-    color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    color_blending.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     color_blending.logicOpEnable = VK_FALSE;
     color_blending.logicOp = VK_LOGIC_OP_COPY;
     color_blending.attachmentCount = 1;
@@ -305,16 +333,19 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     pipeline_layout_info.setLayoutCount = 0;
     pipeline_layout_info.pushConstantRangeCount = 0;
 
-    if (init.disp.createPipelineLayout(&pipeline_layout_info, nullptr, &data.pipeline_layout) != VK_SUCCESS) {
+    if (init.disp.createPipelineLayout(&pipeline_layout_info, nullptr,
+                                       &data.pipeline_layout) != VK_SUCCESS) {
         std::cout << "failed to create pipeline layout\n";
-        return -1; // failed to create pipeline layout
+        return -1;  // failed to create pipeline layout
     }
 
-    std::vector<VkDynamicState> dynamic_states = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    std::vector<VkDynamicState> dynamic_states = {VK_DYNAMIC_STATE_VIEWPORT,
+                                                  VK_DYNAMIC_STATE_SCISSOR};
 
     VkPipelineDynamicStateCreateInfo dynamic_info = {};
     dynamic_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamic_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
+    dynamic_info.dynamicStateCount =
+        static_cast<uint32_t>(dynamic_states.size());
     dynamic_info.pDynamicStates = dynamic_states.data();
 
     VkGraphicsPipelineCreateInfo pipeline_info = {};
@@ -333,9 +364,11 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     pipeline_info.subpass = 0;
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
-    if (init.disp.createGraphicsPipelines(VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &data.graphics_pipeline) != VK_SUCCESS) {
+    if (init.disp.createGraphicsPipelines(VK_NULL_HANDLE, 1, &pipeline_info,
+                                          nullptr, &data.graphics_pipeline) !=
+        VK_SUCCESS) {
         std::cout << "failed to create pipline\n";
-        return -1; // failed to create graphics pipeline
+        return -1;  // failed to create graphics pipeline
     }
 
     init.disp.destroyShaderModule(frag_module, nullptr);
@@ -343,14 +376,15 @@ int create_graphics_pipeline(Init& init, RenderData& data) {
     return 0;
 }
 
-int create_framebuffers(Init& init, RenderData& data) {
+int create_framebuffers(Init& init, RenderData& data)
+{
     data.swapchain_images = init.swapchain.get_images().value();
     data.swapchain_image_views = init.swapchain.get_image_views().value();
 
     data.framebuffers.resize(data.swapchain_image_views.size());
 
     for (size_t i = 0; i < data.swapchain_image_views.size(); i++) {
-        VkImageView attachments[] = { data.swapchain_image_views[i] };
+        VkImageView attachments[] = {data.swapchain_image_views[i]};
 
         VkFramebufferCreateInfo framebuffer_info = {};
         framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -361,26 +395,31 @@ int create_framebuffers(Init& init, RenderData& data) {
         framebuffer_info.height = init.swapchain.extent.height;
         framebuffer_info.layers = 1;
 
-        if (init.disp.createFramebuffer(&framebuffer_info, nullptr, &data.framebuffers[i]) != VK_SUCCESS) {
-            return -1; // failed to create framebuffer
+        if (init.disp.createFramebuffer(&framebuffer_info, nullptr,
+                                        &data.framebuffers[i]) != VK_SUCCESS) {
+            return -1;  // failed to create framebuffer
         }
     }
     return 0;
 }
 
-int create_command_pool(Init& init, RenderData& data) {
+int create_command_pool(Init& init, RenderData& data)
+{
     VkCommandPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    pool_info.queueFamilyIndex = init.device.get_queue_index(vkb::QueueType::graphics).value();
+    pool_info.queueFamilyIndex =
+        init.device.get_queue_index(vkb::QueueType::graphics).value();
 
-    if (init.disp.createCommandPool(&pool_info, nullptr, &data.command_pool) != VK_SUCCESS) {
+    if (init.disp.createCommandPool(&pool_info, nullptr, &data.command_pool) !=
+        VK_SUCCESS) {
         std::cout << "failed to create command pool\n";
-        return -1; // failed to create command pool
+        return -1;  // failed to create command pool
     }
     return 0;
 }
 
-int create_command_buffers(Init& init, RenderData& data) {
+int create_command_buffers(Init& init, RenderData& data)
+{
     data.command_buffers.resize(data.framebuffers.size());
 
     VkCommandBufferAllocateInfo allocInfo = {};
@@ -389,25 +428,27 @@ int create_command_buffers(Init& init, RenderData& data) {
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = (uint32_t)data.command_buffers.size();
 
-    if (init.disp.allocateCommandBuffers(&allocInfo, data.command_buffers.data()) != VK_SUCCESS) {
-        return -1; // failed to allocate command buffers;
+    if (init.disp.allocateCommandBuffers(
+            &allocInfo, data.command_buffers.data()) != VK_SUCCESS) {
+        return -1;  // failed to allocate command buffers;
     }
 
     for (size_t i = 0; i < data.command_buffers.size(); i++) {
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-        if (init.disp.beginCommandBuffer(data.command_buffers[i], &begin_info) != VK_SUCCESS) {
-            return -1; // failed to begin recording command buffer
+        if (init.disp.beginCommandBuffer(data.command_buffers[i],
+                                         &begin_info) != VK_SUCCESS) {
+            return -1;  // failed to begin recording command buffer
         }
 
         VkRenderPassBeginInfo render_pass_info = {};
         render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         render_pass_info.renderPass = data.render_pass;
         render_pass_info.framebuffer = data.framebuffers[i];
-        render_pass_info.renderArea.offset = { 0, 0 };
+        render_pass_info.renderArea.offset = {0, 0};
         render_pass_info.renderArea.extent = init.swapchain.extent;
-        VkClearValue clearColor{ { { 0.0f, 0.0f, 0.0f, 1.0f } } };
+        VkClearValue clearColor{{{0.0f, 0.0f, 0.0f, 1.0f}}};
         render_pass_info.clearValueCount = 1;
         render_pass_info.pClearValues = &clearColor;
 
@@ -420,15 +461,18 @@ int create_command_buffers(Init& init, RenderData& data) {
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissor = {};
-        scissor.offset = { 0, 0 };
+        scissor.offset = {0, 0};
         scissor.extent = init.swapchain.extent;
 
         init.disp.cmdSetViewport(data.command_buffers[i], 0, 1, &viewport);
         init.disp.cmdSetScissor(data.command_buffers[i], 0, 1, &scissor);
 
-        init.disp.cmdBeginRenderPass(data.command_buffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+        init.disp.cmdBeginRenderPass(data.command_buffers[i], &render_pass_info,
+                                     VK_SUBPASS_CONTENTS_INLINE);
 
-        init.disp.cmdBindPipeline(data.command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data.graphics_pipeline);
+        init.disp.cmdBindPipeline(data.command_buffers[i],
+                                  VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  data.graphics_pipeline);
 
         init.disp.cmdDraw(data.command_buffers[i], 3, 1, 0, 0);
 
@@ -436,13 +480,14 @@ int create_command_buffers(Init& init, RenderData& data) {
 
         if (init.disp.endCommandBuffer(data.command_buffers[i]) != VK_SUCCESS) {
             std::cout << "failed to record command buffer\n";
-            return -1; // failed to record command buffer!
+            return -1;  // failed to record command buffer!
         }
     }
     return 0;
 }
 
-int create_sync_objects(Init& init, RenderData& data) {
+int create_sync_objects(Init& init, RenderData& data)
+{
     data.available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
     data.finished_semaphore.resize(MAX_FRAMES_IN_FLIGHT);
     data.in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -456,17 +501,23 @@ int create_sync_objects(Init& init, RenderData& data) {
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (init.disp.createSemaphore(&semaphore_info, nullptr, &data.available_semaphores[i]) != VK_SUCCESS ||
-            init.disp.createSemaphore(&semaphore_info, nullptr, &data.finished_semaphore[i]) != VK_SUCCESS ||
-            init.disp.createFence(&fence_info, nullptr, &data.in_flight_fences[i]) != VK_SUCCESS) {
+        if (init.disp.createSemaphore(&semaphore_info, nullptr,
+                                      &data.available_semaphores[i]) !=
+                VK_SUCCESS ||
+            init.disp.createSemaphore(&semaphore_info, nullptr,
+                                      &data.finished_semaphore[i]) !=
+                VK_SUCCESS ||
+            init.disp.createFence(&fence_info, nullptr,
+                                  &data.in_flight_fences[i]) != VK_SUCCESS) {
             std::cout << "failed to create sync objects\n";
-            return -1; // failed to create synchronization objects for a frame
+            return -1;  // failed to create synchronization objects for a frame
         }
     }
     return 0;
 }
 
-int recreate_swapchain(Init& init, RenderData& data) {
+int recreate_swapchain(Init& init, RenderData& data)
+{
     init.disp.deviceWaitIdle();
 
     init.disp.destroyCommandPool(data.command_pool, nullptr);
@@ -484,30 +535,39 @@ int recreate_swapchain(Init& init, RenderData& data) {
     return 0;
 }
 
-int draw_frame(Init& init, RenderData& data) {
-    init.disp.waitForFences(1, &data.in_flight_fences[data.current_frame], VK_TRUE, UINT64_MAX);
+int draw_frame(Init& init, RenderData& data)
+{
+    init.disp.waitForFences(1, &data.in_flight_fences[data.current_frame],
+                            VK_TRUE, UINT64_MAX);
 
     uint32_t image_index = 0;
     VkResult result = init.disp.acquireNextImageKHR(
-        init.swapchain, UINT64_MAX, data.available_semaphores[data.current_frame], VK_NULL_HANDLE, &image_index);
+        init.swapchain, UINT64_MAX,
+        data.available_semaphores[data.current_frame], VK_NULL_HANDLE,
+        &image_index);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         return recreate_swapchain(init, data);
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-        std::cout << "failed to acquire swapchain image. Error " << result << "\n";
+        std::cout << "failed to acquire swapchain image. Error " << result
+                  << "\n";
         return -1;
     }
 
     if (data.image_in_flight[image_index] != VK_NULL_HANDLE) {
-        init.disp.waitForFences(1, &data.image_in_flight[image_index], VK_TRUE, UINT64_MAX);
+        init.disp.waitForFences(1, &data.image_in_flight[image_index], VK_TRUE,
+                                UINT64_MAX);
     }
-    data.image_in_flight[image_index] = data.in_flight_fences[data.current_frame];
+    data.image_in_flight[image_index] =
+        data.in_flight_fences[data.current_frame];
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore wait_semaphores[] = { data.available_semaphores[data.current_frame] };
-    VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    VkSemaphore wait_semaphores[] = {
+        data.available_semaphores[data.current_frame]};
+    VkPipelineStageFlags wait_stages[] = {
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = wait_semaphores;
     submitInfo.pWaitDstStageMask = wait_stages;
@@ -515,15 +575,18 @@ int draw_frame(Init& init, RenderData& data) {
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &data.command_buffers[image_index];
 
-    VkSemaphore signal_semaphores[] = { data.finished_semaphore[data.current_frame] };
+    VkSemaphore signal_semaphores[] = {
+        data.finished_semaphore[data.current_frame]};
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signal_semaphores;
 
     init.disp.resetFences(1, &data.in_flight_fences[data.current_frame]);
 
-    if (init.disp.queueSubmit(data.graphics_queue, 1, &submitInfo, data.in_flight_fences[data.current_frame]) != VK_SUCCESS) {
+    if (init.disp.queueSubmit(data.graphics_queue, 1, &submitInfo,
+                              data.in_flight_fences[data.current_frame]) !=
+        VK_SUCCESS) {
         std::cout << "failed to submit draw command buffer\n";
-        return -1; //"failed to submit draw command buffer
+        return -1;  //"failed to submit draw command buffer
     }
 
     VkPresentInfoKHR present_info = {};
@@ -532,7 +595,7 @@ int draw_frame(Init& init, RenderData& data) {
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores = signal_semaphores;
 
-    VkSwapchainKHR swapChains[] = { init.swapchain };
+    VkSwapchainKHR swapChains[] = {init.swapchain};
     present_info.swapchainCount = 1;
     present_info.pSwapchains = swapChains;
 
@@ -550,7 +613,8 @@ int draw_frame(Init& init, RenderData& data) {
     return 0;
 }
 
-void cleanup(Init& init, RenderData& data) {
+void cleanup(Init& init, RenderData& data)
+{
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         init.disp.destroySemaphore(data.finished_semaphore[i], nullptr);
         init.disp.destroySemaphore(data.available_semaphores[i], nullptr);
@@ -576,7 +640,8 @@ void cleanup(Init& init, RenderData& data) {
     destroy_window_glfw(init.window);
 }
 
-int main() {
+int main()
+{
     Init init;
     RenderData render_data;
 
