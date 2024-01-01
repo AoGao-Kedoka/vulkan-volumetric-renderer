@@ -1,24 +1,23 @@
-// always include fmt before Application.h (includes windows.h and so does glfw)
 #include <fmt/format.h>
+#include <filesystem>
 #include "application.h"
 
 //----------------------------------------------------------------------------------------
-int
-main()
+int main()
 {
-  try
-  {
-    Application app;
-    app.init();
-    app.run();
-  }
-  catch (const std::exception& e)
-  {
-    fmt::print("{}\n", e.what());
-    return EXIT_FAILURE;
-  }
+    auto pwd = std::filesystem::current_path();
+    fmt::print("Current path is: {}\n", pwd.generic_string());
 
-  return EXIT_SUCCESS;
+    try {
+        Application app;
+        app.init();
+        app.run();
+    } catch (const std::exception& e) {
+        fmt::print("{}\n", e.what());
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 //----------------------------------------------------------------------------------------

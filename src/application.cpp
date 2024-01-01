@@ -902,10 +902,64 @@ void Application::createSyncObjects()
     }
 }
 
+void Application::createImGui() {
+    VkDescriptorPoolSize pool_sizes[] =
+	{
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+	};
+
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1000;
+	pool_info.poolSizeCount = std::size(pool_sizes);
+	pool_info.pPoolSizes = pool_sizes;
+    vkCreateDescriptorPool(m_device, &pool_info, nullptr, &imguiPool);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsLight();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForVulkan(m_window, true);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = m_instance;
+    init_info.PhysicalDevice = m_physicalDevice;
+    init_info.Device = m_device;
+    init_info.QueueFamily =
+        findQueueFamilies(m_physicalDevice).graphicsFamily.value();
+    init_info.Queue = m_graphicsQueue;
+    init_info.PipelineCache = VK_NULL_HANDLE;
+    init_info.DescriptorPool = imguiPool;
+    init_info.Subpass = 0;
+    init_info.MinImageCount = 2;
+    init_info.ImageCount = MAX_FRAMES_IN_FLIGHT;
+    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.Allocator = nullptr;
+    init_info.CheckVkResultFn = nullptr;
+    ImGui_ImplVulkan_Init(&init_info, m_renderPass);
+}
+
 void Application::recordCommandBuffer(VkCommandBuffer commandBuffer, uint8_t imageIndex) {
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         beginInfo.pInheritanceInfo = nullptr;
         if (vkBeginCommandBuffer(commandBuffer, &beginInfo) !=
             VK_SUCCESS) {
@@ -931,6 +985,8 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer, uint8_t ima
 
         // Draw
         vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 
         // End render pass
         vkCmdEndRenderPass(commandBuffer);
@@ -959,7 +1015,6 @@ void Application::drawFrame()
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
-    vkResetCommandBuffer(m_commandBuffer, 0);
     recordCommandBuffer(m_commandBuffer, imageIndex);
 
     VkSubmitInfo submitInfo = {};
@@ -1007,6 +1062,8 @@ void Application::drawFrame()
 //----------------------------------------------------------------------------------------
 void Application::recreateSwapChain()
 {
+    vkDeviceWaitIdle(m_device);
+
     // Wait while window is minimized
     int width = 0, height = 0;
     while (width == 0 || height == 0) {
@@ -1050,6 +1107,11 @@ void Application::cleanup()
 {
     cleanupSwapChain();
 
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    vkDestroyDescriptorPool(m_device, imguiPool, nullptr);
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         vkDestroySemaphore(m_device, m_renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(m_device, m_imageAvailableSemaphores[i], nullptr);
@@ -1058,6 +1120,7 @@ void Application::cleanup()
 
     vkDestroyCommandPool(m_device, m_commandPool, nullptr);
     vkDestroyDevice(m_device, nullptr);
+
 
     if (ENABLE_VALIDATION_LAYERS) {
         DestroyDebugUtilsMessengerEXT(m_instance, sg_debugMessenger, nullptr);
@@ -1084,6 +1147,7 @@ void Application::init()
     createCommandPool();
     createCommandBuffers();
     createSyncObjects();
+    createImGui();
 }
 
 //----------------------------------------------------------------------------------------
@@ -1091,6 +1155,12 @@ void Application::run()
 {
     while (!glfwWindowShouldClose(m_window)) {
         glfwPollEvents();
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::Text("Imgui Test");
+        ImGui::Render();
         drawFrame();
     }
     vkDeviceWaitIdle(m_device);

@@ -16,6 +16,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>  // NB. don't include windows.h (or fmt) after glfw
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
 
 //----------------------------------------------------------------------------------------
 struct QueueFamilyIndices {
@@ -60,6 +63,9 @@ class Application {
     std::vector<VkSemaphore> m_imageAvailableSemaphores;
     std::vector<VkSemaphore> m_renderFinishedSemaphores;
     std::vector<VkFence> m_inFlightFences;
+
+	VkDescriptorPool imguiPool;
+
     size_t m_currentFrame = 0;
 
     bool m_framebufferResized = false;
@@ -96,8 +102,9 @@ private:
     void createCommandPool();
     void createCommandBuffers();
     void createSyncObjects();
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint8_t imageIndex);
+    void createImGui();
 
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint8_t imageIndex);
     void drawFrame();
 
     void recreateSwapChain();
