@@ -19,12 +19,11 @@ find_package(Threads REQUIRED)
 find_package(Vulkan REQUIRED)
 
 include(FetchContent)
-FetchContent_Declare(
-    fetch_vk_bootstrap
-    GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
-    GIT_TAG        main
+FetchContent_Declare(fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG master
 )
-FetchContent_MakeAvailable(fetch_vk_bootstrap)
+FetchContent_MakeAvailable(fmt)
 
 set(IGG_COMPONENTS "IMGUI;GLFW;GLM" CACHE STRING "The components to import and build")
 
@@ -150,5 +149,4 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders"
         )
 
-
-target_link_libraries(${PROJECT_NAME} glfw Vulkan::Vulkan vk-bootstrap::vk-bootstrap glm imgui)
+target_link_libraries(${PROJECT_NAME} glfw Vulkan::Vulkan glm imgui fmt::fmt)
