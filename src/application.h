@@ -1,10 +1,20 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>  // NB. don't include windows.h (or fmt) after glfw
-
 #include <optional>
 #include <vector>
+#include <fmt/format.h>
+#include <algorithm>
+#include <fstream>
+#include <map>
+#include <set>
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>  // NB. don't include windows.h (or fmt) after glfw
 
 //----------------------------------------------------------------------------------------
 struct QueueFamilyIndices {

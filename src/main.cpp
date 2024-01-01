@@ -1,6 +1,6 @@
 // always include fmt before Application.h (includes windows.h and so does glfw)
 #include <fmt/format.h>
-#include "Application.h"
+#include "application.h"
 
 //----------------------------------------------------------------------------------------
 int

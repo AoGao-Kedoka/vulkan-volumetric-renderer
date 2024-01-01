@@ -1,16 +1,6 @@
 // always include fmt before Application.h (includes windows.h and so does glfw)
-#include "Application.h"
+#include "application.h"
 
-#include <fmt/format.h>
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <algorithm>
-#include <fstream>
-#include <glm/mat4x4.hpp>
-#include <glm/vec4.hpp>
-#include <map>
-#include <set>
 
 //----------------------------------------------------------------------------------------
 constexpr int WINDOW_WIDTH = 800;
