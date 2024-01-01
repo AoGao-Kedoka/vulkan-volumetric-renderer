@@ -5,7 +5,6 @@
 //----------------------------------------------------------------------------------------
 constexpr int WINDOW_WIDTH = 800;
 constexpr int WINDOW_HEIGHT = 600;
-
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::vector<const char *> DEVICE_EXTENSIONS = {
@@ -133,7 +132,7 @@ void Application::createInstance()
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);  // not using OpenGL
     m_window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT,
-                                "Vulkan hello triangle", nullptr, nullptr);
+                                "Vulkan Volumetric Renderer", nullptr, nullptr);
     glfwSetWindowUserPointer(m_window, this);
     glfwSetFramebufferSizeCallback(m_window, framebufferResizeCallback);
 
@@ -853,7 +852,7 @@ void Application::createCommandPool()
     VkCommandPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-    poolInfo.flags = 0;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
     if (vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool) !=
         VK_SUCCESS) {
@@ -864,59 +863,15 @@ void Application::createCommandPool()
 //----------------------------------------------------------------------------------------
 void Application::createCommandBuffers()
 {
-    m_commandBuffers.resize(m_swapChainFramebuffers.size());
-
     VkCommandBufferAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = m_commandPool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount =
-        static_cast<uint32_t>(m_commandBuffers.size());
+    allocInfo.commandBufferCount = 1;
 
     if (vkAllocateCommandBuffers(m_device, &allocInfo,
-                                 m_commandBuffers.data()) != VK_SUCCESS) {
+                                 &m_commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");
-    }
-
-    // Add commands
-    for (size_t i = 0; i < m_commandBuffers.size(); i++) {
-        // Begin commands
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-        beginInfo.pInheritanceInfo = nullptr;
-        if (vkBeginCommandBuffer(m_commandBuffers[i], &beginInfo) !=
-            VK_SUCCESS) {
-            throw std::runtime_error(
-                "failed to begin recording command buffer!");
-        }
-
-        // Begin render pass
-        VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-        VkRenderPassBeginInfo renderPassInfo = {};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = m_renderPass;
-        renderPassInfo.framebuffer = m_swapChainFramebuffers[i];
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = m_swapChainExtent;
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
-        vkCmdBeginRenderPass(m_commandBuffers[i], &renderPassInfo,
-                             VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(m_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          m_graphicsPipeline);
-
-        // Draw
-        vkCmdDraw(m_commandBuffers[i], 3, 1, 0, 0);
-
-        // End render pass
-        vkCmdEndRenderPass(m_commandBuffers[i]);
-
-        // End of commands
-        if (vkEndCommandBuffer(m_commandBuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to record command buffer!");
-        }
     }
 }
 
@@ -947,6 +902,45 @@ void Application::createSyncObjects()
     }
 }
 
+void Application::recordCommandBuffer(VkCommandBuffer commandBuffer, uint8_t imageIndex) {
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        beginInfo.pInheritanceInfo = nullptr;
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) !=
+            VK_SUCCESS) {
+            throw std::runtime_error(
+                "failed to begin recording command buffer!");
+        }
+
+        // Begin render pass
+        VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+        VkRenderPassBeginInfo renderPassInfo = {};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = m_renderPass;
+        renderPassInfo.framebuffer = m_swapChainFramebuffers[imageIndex];
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = m_swapChainExtent;
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
+                             VK_SUBPASS_CONTENTS_INLINE);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          m_graphicsPipeline);
+
+        // Draw
+        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+        // End render pass
+        vkCmdEndRenderPass(commandBuffer);
+
+        // End of commands
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to record command buffer!");
+        }
+}
+
 //----------------------------------------------------------------------------------------
 void Application::drawFrame()
 {
@@ -965,6 +959,9 @@ void Application::drawFrame()
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
+    vkResetCommandBuffer(m_commandBuffer, 0);
+    recordCommandBuffer(m_commandBuffer, imageIndex);
+
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     VkSemaphore waitSemaphores[] = {m_imageAvailableSemaphores[m_currentFrame]};
@@ -974,7 +971,7 @@ void Application::drawFrame()
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &m_commandBuffers[imageIndex];
+    submitInfo.pCommandBuffers = &m_commandBuffer;
     VkSemaphore signalSemaphores[] = {
         m_renderFinishedSemaphores[m_currentFrame]};
     submitInfo.signalSemaphoreCount = 1;
@@ -1036,9 +1033,8 @@ void Application::cleanupSwapChain()
         vkDestroyFramebuffer(m_device, framebuffer, nullptr);
     }
 
-    vkFreeCommandBuffers(m_device, m_commandPool,
-                         static_cast<uint32_t>(m_commandBuffers.size()),
-                         m_commandBuffers.data());
+    vkFreeCommandBuffers(m_device, m_commandPool,1
+                         , &m_commandBuffer);
 
     vkDestroyPipeline(m_device, m_graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);

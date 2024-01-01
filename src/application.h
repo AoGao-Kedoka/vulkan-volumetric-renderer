@@ -16,6 +16,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>  // NB. don't include windows.h (or fmt) after glfw
 
+
 //----------------------------------------------------------------------------------------
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -55,7 +56,7 @@ class Application {
     VkPipeline m_graphicsPipeline;
     std::vector<VkFramebuffer> m_swapChainFramebuffers;
     VkCommandPool m_commandPool;
-    std::vector<VkCommandBuffer> m_commandBuffers;
+    VkCommandBuffer m_commandBuffer;
     std::vector<VkSemaphore> m_imageAvailableSemaphores;
     std::vector<VkSemaphore> m_renderFinishedSemaphores;
     std::vector<VkFence> m_inFlightFences;
@@ -95,6 +96,7 @@ private:
     void createCommandPool();
     void createCommandBuffers();
     void createSyncObjects();
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint8_t imageIndex);
 
     void drawFrame();
 
