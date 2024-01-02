@@ -1,12 +1,20 @@
 #pragma once
 
-#include <optional>
-#include <vector>
-#include <fmt/format.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+
 #include <algorithm>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
-#include <map>
+#include <iostream>
+#include <limits>
+#include <optional>
 #include <set>
+#include <stdexcept>
+#include <vector>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -14,13 +22,8 @@
 #include <glm/vec4.hpp>
 
 #define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>  // NB. don't include windows.h (or fmt) after glfw
+#include <GLFW/glfw3.h>
 
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan.h"
-
-//----------------------------------------------------------------------------------------
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
@@ -31,94 +34,95 @@ struct QueueFamilyIndices {
     }
 };
 
-//----------------------------------------------------------------------------------------
 struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities = {};
+    VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-//----------------------------------------------------------------------------------------
-
-//----------------------------------------------------------------------------------------
 class Application {
-    GLFWwindow *m_window = nullptr;
-    VkInstance m_instance = VK_NULL_HANDLE;
-    VkSurfaceKHR m_surface = VK_NULL_HANDLE;
-    VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
-    VkDevice m_device = VK_NULL_HANDLE;
-    VkQueue m_graphicsQueue;
-    VkQueue m_presentQueue;
-    VkSwapchainKHR m_swapChain = VK_NULL_HANDLE;
-    std::vector<VkImage> m_swapChainImages;
-    std::vector<VkImageView> m_swapChainImageViews;
-    VkFormat m_swapChainImageFormat;
-    VkExtent2D m_swapChainExtent;
-    VkRenderPass m_renderPass;
-    VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline m_graphicsPipeline;
-    std::vector<VkFramebuffer> m_swapChainFramebuffers;
-    VkCommandPool m_commandPool;
-    VkCommandBuffer m_commandBuffer;
-    std::vector<VkSemaphore> m_imageAvailableSemaphores;
-    std::vector<VkSemaphore> m_renderFinishedSemaphores;
-    std::vector<VkFence> m_inFlightFences;
+public:
+    void run()
+    {
+        initWindow();
+        initVulkan();
+        initUI();
+        mainLoop();
+        cleanup();
+    }
 
-	VkDescriptorPool imguiPool;
-
-    size_t m_currentFrame = 0;
-
-    bool m_framebufferResized = false;
+    bool framebufferResized = false;
 
 private:
-    void setupDebugMessenger();
-
+    void initWindow();
+    void initVulkan();
+    void initUI();
+    void cleanupSwapChain();
+    void cleanup();
+    void mainLoop();
+    void recreateSwapChain();
     void createInstance();
-    bool checkValidationLayerSupport();
-    std::vector<const char *> getRequiredExtensions();
-
-    QueueFamilyIndices findQueueFamilies(const VkPhysicalDevice& device);
+    void populateDebugMessengerCreateInfo(
+        VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+    void setupDebugMessenger();
     void createSurface();
     void pickPhysicalDevice();
-    int rateDeviceSuitability(const VkPhysicalDevice& device);
-    bool checkDeviceExtensionSupport(const VkPhysicalDevice& device);
-
     void createLogicalDevice();
-
     void createSwapChain();
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+    void createImageViews();
+    void createRenderPass();
+    void createGraphicsPipeline();
+    void createFramebuffers();
+    void createCommandPool();
+    void createCommandBuffers();
+    void recordCommandBuffer(VkCommandBuffer commandBuffer,
+                             uint32_t imageIndex);
+    void createSyncObjects();
+    void drawFrame();
+    VkShaderModule createShaderModule(const std::vector<char>& code);
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(
         const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR chooseSwapPresentMode(
         const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+    bool isDeviceSuitable(VkPhysicalDevice device);
+    bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+    std::vector<const char *> getRequiredExtensions();
+    bool checkValidationLayerSupport();
 
-    void createImageViews();
-    void createRenderPass();
+private:
+    GLFWwindow *window;
 
-    VkShaderModule createShaderModule(const std::vector<char>& code);
-    void createGraphicsPipeline();
-    void createFramebuffers();
-    void createCommandPool();
-    void createCommandBuffers();
-    void createSyncObjects();
-    void createImGui();
+    VkInstance instance;
+    VkDebugUtilsMessengerEXT debugMessenger;
+    VkSurfaceKHR surface;
 
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint8_t imageIndex);
-    void drawFrame();
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkDevice device;
 
-    void recreateSwapChain();
-    void cleanupSwapChain();
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
 
-    void cleanup();
+    VkSwapchainKHR swapChain;
+    std::vector<VkImage> swapChainImages;
+    VkFormat swapChainImageFormat;
+    VkExtent2D swapChainExtent;
+    std::vector<VkImageView> swapChainImageViews;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
 
-public:
-    ~Application() { cleanup(); }
+    VkRenderPass renderPass;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline graphicsPipeline;
 
-    void init();
-    void run();
+    VkCommandPool commandPool;
+    std::vector<VkCommandBuffer> commandBuffers;
 
-    void setFramebufferResized() { m_framebufferResized = true; }
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
+    std::vector<VkFence> inFlightFences;
+    uint32_t currentFrame = 0;
+
+    VkDescriptorPool imguiPool;
 };
-
-//----------------------------------------------------------------------------------------
