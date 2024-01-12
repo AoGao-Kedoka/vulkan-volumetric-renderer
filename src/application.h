@@ -1,9 +1,5 @@
 #pragma once
 
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_vulkan.h>
-
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -11,8 +7,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -23,11 +17,16 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+#include "ui.h"
+#include "config.h"
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsAndComputeFamily;
@@ -85,13 +84,15 @@ struct Particle {
     }
 };
 
+
 class Application {
 public:
     void run()
     {
         initWindow();
         initVulkan();
-        initUI();
+        uiInterface.Init(device, window, instance, physicalDevice,
+                         graphicsQueue, 2, renderPass);
         mainLoop();
         cleanup();
     }
@@ -99,7 +100,6 @@ public:
 private:
     void initWindow();
     void initVulkan();
-    void initUI();
     void cleanup();
     void mainLoop();
     void recreateSwapChain();
@@ -305,11 +305,9 @@ private:
     std::vector<VkFence> computeInFlightFences;
     uint32_t currentFrame = 0;
 
-    VkDescriptorPool imguiPool;
-
     float lastFrameTime = 0.0f;
-
     bool framebufferResized = false;
-
     double lastTime = 0.0f;
+
+    UserInterface uiInterface;
 };
