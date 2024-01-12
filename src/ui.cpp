@@ -1,19 +1,9 @@
 #include "ui.h"
 
-void UserInterface::Cleanup()
-{
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-    vkDestroyDescriptorPool(device, imguiPool, nullptr);
-}
-
-void UserInterface::Init(VkDevice device, GLFWwindow *window,
-                         VkInstance instance, VkPhysicalDevice physicalDevice,
-                         VkQueue graphicsQueue, uint32_t imageCount,
+void UserInterface::Init(Core core, uint32_t imageCount,
                          VkRenderPass renderPass)
 {
-    this->device = device;
+    this->core = core;
     VkDescriptorPoolSize pool_sizes[] = {
         {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
@@ -33,7 +23,7 @@ void UserInterface::Init(VkDevice device, GLFWwindow *window,
     pool_info.maxSets = 1000;
     pool_info.poolSizeCount = std::size(pool_sizes);
     pool_info.pPoolSizes = pool_sizes;
-    vkCreateDescriptorPool(device, &pool_info, nullptr, &imguiPool);
+    vkCreateDescriptorPool(core.device, &pool_info, nullptr, &imguiPool);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -49,12 +39,12 @@ void UserInterface::Init(VkDevice device, GLFWwindow *window,
     // ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForVulkan(window, true);
+    ImGui_ImplGlfw_InitForVulkan(core.window, true);
     ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = instance;
-    init_info.PhysicalDevice = physicalDevice;
-    init_info.Device = device;
-    init_info.Queue = graphicsQueue;
+    init_info.Instance = core.instance;
+    init_info.PhysicalDevice = core.physicalDevice;
+    init_info.Device = core.device;
+    init_info.Queue = core.graphicsQueue;
     init_info.PipelineCache = VK_NULL_HANDLE;
     init_info.DescriptorPool = imguiPool;
     init_info.Subpass = 0;
@@ -71,7 +61,8 @@ void UserInterface::Render()
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow();
+    // ImGui::ShowDemoWindow();
+    // Add UI stuffs here
     ImGui::Render();
 }
 
@@ -79,4 +70,12 @@ void UserInterface::RecordToCommandBuffer(VkCommandBuffer commandBuffer)
 {
     // ImGui must draw after drawing the command buffer, otherwise it's glitchy
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+}
+
+void UserInterface::Cleanup()
+{
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    vkDestroyDescriptorPool(core.device, imguiPool, nullptr);
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 struct FilePath {
     inline const static std::string computeShaderPath{ "./shaders/particles_comp.spv" };
     inline const static std::string vertexShaderPath{ "./shaders/particles_vert.spv" };
