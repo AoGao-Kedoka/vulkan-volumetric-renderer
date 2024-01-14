@@ -148,7 +148,7 @@ void Application::cleanup()
         vkDestroyFence(core.device, computeInFlightFences[i], nullptr);
     }
 
-    vkDestroyCommandPool(core.device, commandPool, nullptr);
+    vkDestroyCommandPool(core.device, core.commandPool, nullptr);
 
     vkDestroyDevice(core.device, nullptr);
 
@@ -348,6 +348,7 @@ void Application::createLogicalDevice()
     }
 
     VkPhysicalDeviceFeatures deviceFeatures{};
+    deviceFeatures.samplerAnisotropy = VK_TRUE;
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -757,7 +758,7 @@ void Application::createCommandPool()
     poolInfo.queueFamilyIndex =
         queueFamilyIndices.graphicsAndComputeFamily.value();
 
-    if (vkCreateCommandPool(core.device, &poolInfo, nullptr, &commandPool) !=
+    if (vkCreateCommandPool(core.device, &poolInfo, nullptr, &core.commandPool) !=
         VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");
     }
@@ -924,7 +925,7 @@ void Application::createCommandBuffers()
 
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = commandPool;
+    allocInfo.commandPool = core.commandPool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
@@ -940,7 +941,7 @@ void Application::createComputeCommandBuffers()
 
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = commandPool;
+    allocInfo.commandPool = core.commandPool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = (uint32_t)computeCommandBuffers.size();
 

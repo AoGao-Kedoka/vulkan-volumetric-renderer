@@ -16,6 +16,11 @@ public:
     VkQueue computeQueue;
     VkQueue presentQueue;
 
+    VkCommandPool commandPool;
+
+    VkCommandBuffer beginSingleTimeCommands();
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
     uint32_t findMemoryType(uint32_t typeFilter,
                             VkMemoryPropertyFlags properties)
     {

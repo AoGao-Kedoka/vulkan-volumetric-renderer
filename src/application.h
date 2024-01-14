@@ -25,11 +25,11 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "core.h"
-#include "ui.h"
-#include "config.h"
-#include "texture.h"
 #include "buffer.h"
+#include "config.h"
+#include "core.h"
+#include "texture.h"
+#include "ui.h"
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsAndComputeFamily;
@@ -86,7 +86,6 @@ struct Particle {
         return attributeDescriptions;
     }
 };
-
 
 class Application {
 public:
@@ -167,38 +166,14 @@ private:
 
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(core.device, &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        VkCommandBuffer commandBuffer = core.beginSingleTimeCommands();
 
         VkBufferCopy copyRegion{};
         copyRegion.size = size;
         vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        vkQueueSubmit(core.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(core.graphicsQueue);
-
-        vkFreeCommandBuffers(core.device, commandPool, 1, &commandBuffer);
+        core.endSingleTimeCommands(commandBuffer);
     }
-
 
     void updateUniformBuffer(uint32_t currentImage)
     {
@@ -209,7 +184,6 @@ private:
     }
 
 private:
-
     Core core;
     VkDebugUtilsMessengerEXT debugMessenger;
     VkSurfaceKHR surface;
@@ -228,8 +202,6 @@ private:
     VkDescriptorSetLayout computeDescriptorSetLayout;
     VkPipelineLayout computePipelineLayout;
     VkPipeline computePipeline;
-
-    VkCommandPool commandPool;
 
     std::vector<Buffer> shaderStorageBuffers;
 
