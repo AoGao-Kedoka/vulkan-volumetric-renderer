@@ -11,6 +11,7 @@
 
 class UserInterface {
 public:
+    UserInterface(Core core):core{core}{};
     void Init(Core core, uint32_t imageCount, VkRenderPass renderPass);
     void Render();
     void RecordToCommandBuffer(VkCommandBuffer commandBuffer);

@@ -31,22 +31,7 @@
 #include "texture.h"
 #include "ui.h"
 
-struct QueueFamilyIndices {
-    std::optional<uint32_t> graphicsAndComputeFamily;
-    std::optional<uint32_t> presentFamily;
 
-    bool isComplete()
-    {
-        return graphicsAndComputeFamily.has_value() &&
-               presentFamily.has_value();
-    }
-};
-
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> presentModes;
-};
 
 struct UniformBufferObject {
     float deltaTime = 1.0f;
@@ -109,12 +94,11 @@ private:
         VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void setupDebugMessenger();
     void createSurface();
-    void pickPhysicalDevice();
-    void createLogicalDevice();
     void createSwapChain();
     void createImageViews();
     void createRenderPass();
     void createComputeDescriptorSetLayout();
+    void createGraphicsDescriptorSetLayout();
     void createGraphicsPipeline();
     void createComputePipeline();
     void createFramebuffers();
@@ -136,10 +120,6 @@ private:
     VkPresentModeKHR chooseSwapPresentMode(
         const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-    bool isDeviceSuitable(VkPhysicalDevice device);
-    bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
     std::vector<const char *> getRequiredExtensions();
     bool checkValidationLayerSupport();
 
@@ -186,7 +166,6 @@ private:
 private:
     Core core;
     VkDebugUtilsMessengerEXT debugMessenger;
-    VkSurfaceKHR surface;
 
     VkSwapchainKHR swapChain;
     std::vector<VkImage> swapChainImages;
@@ -200,6 +179,7 @@ private:
     VkPipeline graphicsPipeline;
 
     VkDescriptorSetLayout computeDescriptorSetLayout;
+    VkDescriptorSetLayout graphicsDescriptorSetLayout;
     VkPipelineLayout computePipelineLayout;
     VkPipeline computePipeline;
 
@@ -225,5 +205,5 @@ private:
     bool framebufferResized = false;
     double lastTime = 0.0f;
 
-    UserInterface uiInterface;
+    UserInterface uiInterface { core };
 };

@@ -3,7 +3,6 @@
 void UserInterface::Init(Core core, uint32_t imageCount,
                          VkRenderPass renderPass)
 {
-    this->core = core;
     VkDescriptorPoolSize pool_sizes[] = {
         {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},

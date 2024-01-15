@@ -16,7 +16,7 @@ public:
     void Cleanup();
 
 private:
-    const void CheckValue()
+    void CheckValue()
     {
         if (buffer == VK_NULL_HANDLE || bufferMemory == VK_NULL_HANDLE)
             std::runtime_error("Something went wrong with buffer");

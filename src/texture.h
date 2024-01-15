@@ -10,6 +10,7 @@
 class Texture {
 public:
     Texture(Core core, std::string imagePath, VkFormat format);
+    Texture(Core core, uint32_t width, uint32_t height, VkFormat format);
     Texture& CreateImageView();
     Texture& CreateImageSampler();
     VkImage GetImage() { return image; };
