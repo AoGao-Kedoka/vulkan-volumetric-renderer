@@ -78,7 +78,7 @@ public:
     {
         initWindow();
         initVulkan();
-        uiInterface.Init(core, 2, renderPass);
+        uiInterface.Init( 2, renderPass);
         mainLoop();
         cleanup();
     }
@@ -121,7 +121,6 @@ private:
         const std::vector<VkPresentModeKHR>& availablePresentModes);
     VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     std::vector<const char *> getRequiredExtensions();
-    bool checkValidationLayerSupport();
 
     static void framebufferResizeCallback(GLFWwindow *window, int width,
                                           int height)
@@ -175,13 +174,14 @@ private:
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass;
-    VkPipelineLayout pipelineLayout;
+    VkPipelineLayout graphicsPipelineLayout;
     VkPipeline graphicsPipeline;
 
     VkDescriptorSetLayout computeDescriptorSetLayout;
     VkDescriptorSetLayout graphicsDescriptorSetLayout;
     VkPipelineLayout computePipelineLayout;
     VkPipeline computePipeline;
+    Texture computeStoragetexture;
 
     std::vector<Buffer> shaderStorageBuffers;
 
@@ -190,6 +190,7 @@ private:
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> computeDescriptorSets;
+    std::vector<VkDescriptorSet> graphicsDescriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkCommandBuffer> computeCommandBuffers;
@@ -205,5 +206,5 @@ private:
     bool framebufferResized = false;
     double lastTime = 0.0f;
 
-    UserInterface uiInterface { core };
+    UserInterface uiInterface { &core };
 };

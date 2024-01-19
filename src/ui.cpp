@@ -1,7 +1,6 @@
 #include "ui.h"
 
-void UserInterface::Init(Core core, uint32_t imageCount,
-                         VkRenderPass renderPass)
+void UserInterface::Init(uint32_t imageCount, VkRenderPass& renderPass)
 {
     VkDescriptorPoolSize pool_sizes[] = {
         {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
@@ -22,7 +21,7 @@ void UserInterface::Init(Core core, uint32_t imageCount,
     pool_info.maxSets = 1000;
     pool_info.poolSizeCount = std::size(pool_sizes);
     pool_info.pPoolSizes = pool_sizes;
-    vkCreateDescriptorPool(core.device, &pool_info, nullptr, &imguiPool);
+    vkCreateDescriptorPool(this->core->device, &pool_info, nullptr, &imguiPool);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -38,12 +37,12 @@ void UserInterface::Init(Core core, uint32_t imageCount,
     // ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForVulkan(core.window, true);
+    ImGui_ImplGlfw_InitForVulkan(core->window, true);
     ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = core.instance;
-    init_info.PhysicalDevice = core.physicalDevice;
-    init_info.Device = core.device;
-    init_info.Queue = core.graphicsQueue;
+    init_info.Instance = core->instance;
+    init_info.PhysicalDevice = core->physicalDevice;
+    init_info.Device = core->device;
+    init_info.Queue = core->graphicsQueue;
     init_info.PipelineCache = VK_NULL_HANDLE;
     init_info.DescriptorPool = imguiPool;
     init_info.Subpass = 0;
@@ -76,5 +75,5 @@ void UserInterface::Cleanup()
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    vkDestroyDescriptorPool(core.device, imguiPool, nullptr);
+    vkDestroyDescriptorPool(core->device, imguiPool, nullptr);
 }

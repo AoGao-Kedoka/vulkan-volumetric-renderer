@@ -49,7 +49,7 @@ void Application::cleanup()
     uiInterface.Cleanup();
 
     vkDestroyPipeline(core.device, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(core.device, pipelineLayout, nullptr);
+    vkDestroyPipelineLayout(core.device, graphicsPipelineLayout, nullptr);
 
     vkDestroyPipeline(core.device, computePipeline, nullptr);
     vkDestroyPipelineLayout(core.device, computePipelineLayout, nullptr);
@@ -340,28 +340,17 @@ void Application::createRenderPass()
 
 void Application::createComputeDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings{};
+    std::array<VkDescriptorSetLayoutBinding, 1> layoutBindings{};
     layoutBindings[0].binding = 0;
     layoutBindings[0].descriptorCount = 1;
-    layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     layoutBindings[0].pImmutableSamplers = nullptr;
     layoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-    layoutBindings[1].binding = 1;
-    layoutBindings[1].descriptorCount = 1;
-    layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    layoutBindings[1].pImmutableSamplers = nullptr;
-    layoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-    layoutBindings[2].binding = 2;
-    layoutBindings[2].descriptorCount = 1;
-    layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    layoutBindings[2].pImmutableSamplers = nullptr;
-    layoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 3;
+    layoutInfo.bindingCount = layoutBindings.size();
     layoutInfo.pBindings = layoutBindings.data();
 
     if (vkCreateDescriptorSetLayout(core.device, &layoutInfo, nullptr,
@@ -374,7 +363,32 @@ void Application::createComputeDescriptorSetLayout()
 
 void Application::createGraphicsDescriptorSetLayout()
 {
-    
+    // 0: Texture from compute shader, 1: Caustic texture
+    std::array<VkDescriptorSetLayoutBinding, 2> layoutBindings;
+
+    layoutBindings[0].binding = 0;
+    layoutBindings[0].descriptorCount = 1;
+    layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[0].pImmutableSamplers = nullptr;
+    layoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    layoutBindings[1].binding = 1;
+    layoutBindings[1].descriptorCount = 1;
+    layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[1].pImmutableSamplers = nullptr;
+    layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
+    layoutInfo.pBindings = layoutBindings.data();
+
+    if (vkCreateDescriptorSetLayout(core.device, &layoutInfo, nullptr,
+                                    &graphicsDescriptorSetLayout) !=
+        VK_SUCCESS) {
+        throw std::runtime_error(
+            "failed to create compute descriptor set layout!");
+    }
 }
 
 void Application::createGraphicsPipeline()
@@ -422,7 +436,7 @@ void Application::createGraphicsPipeline()
      * Point list topology only for the sake of drawing the particles, might be
      * VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST if triangles are used
      */
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
     VkPipelineViewportStateCreateInfo viewportState{};
@@ -485,10 +499,10 @@ void Application::createGraphicsPipeline()
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.pSetLayouts = &graphicsDescriptorSetLayout;
 
     if (vkCreatePipelineLayout(core.device, &pipelineLayoutInfo, nullptr,
-                               &pipelineLayout) != VK_SUCCESS) {
+                               &graphicsPipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout!");
     }
 
@@ -503,7 +517,7 @@ void Application::createGraphicsPipeline()
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
-    pipelineInfo.layout = pipelineLayout;
+    pipelineInfo.layout = graphicsPipelineLayout;
     pipelineInfo.renderPass = renderPass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -615,7 +629,7 @@ void Application::createShaderStorageBuffers()
     VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
 
     // Create a staging buffer used to upload data to the gpu
-    Buffer stagingBuffer{core, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    Buffer stagingBuffer{&core, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
 
@@ -627,7 +641,7 @@ void Application::createShaderStorageBuffers()
 
     // Copy initial particle data to all storage buffers
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        Buffer shaderStorageBuffer{core, bufferSize,
+        Buffer shaderStorageBuffer{&core, bufferSize,
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                                        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -648,7 +662,7 @@ void Application::createUniformBuffers()
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         Buffer uniformBuffer{
-            core,
+            &core,
             bufferSize,
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -686,6 +700,14 @@ void Application::createDescriptorPool()
 
 void Application::createComputeDescriptorSets()
 {
+    computeStoragetexture =
+        Texture{&core, WIDTH, HEIGHT, VK_FORMAT_R8G8B8A8_SRGB}
+            .CreateImageView()
+            .CreateImageSampler();
+    computeStoragetexture.TransitionImageLayout(
+        computeStoragetexture.GetImage(), computeStoragetexture.GetFormat(),
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                computeDescriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -700,50 +722,26 @@ void Application::createComputeDescriptorSets()
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorBufferInfo uniformBufferInfo{};
-        uniformBufferInfo.buffer = uniformBuffers[i].GetBuffer();
-        uniformBufferInfo.offset = 0;
-        uniformBufferInfo.range = sizeof(UniformBufferObject);
 
-        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+        VkDescriptorImageInfo computeStorageTextureInfo{};
+        computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        computeStorageTextureInfo.imageView =
+            computeStoragetexture.GetImageView();
+        computeStorageTextureInfo.sampler = computeStoragetexture.GetSampler();
+
+        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = computeDescriptorSets[i];
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         descriptorWrites[0].dstBinding = 0;
-        descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].pImageInfo = &computeStorageTextureInfo;
         descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &uniformBufferInfo;
+        
 
-        VkDescriptorBufferInfo storageBufferInfoLastFrame{};
-        storageBufferInfoLastFrame.buffer =
-            shaderStorageBuffers[(i - 1) % MAX_FRAMES_IN_FLIGHT].GetBuffer();
-        storageBufferInfoLastFrame.offset = 0;
-        storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_COUNT;
-
-        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = computeDescriptorSets[i];
-        descriptorWrites[1].dstBinding = 1;
-        descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pBufferInfo = &storageBufferInfoLastFrame;
-
-        VkDescriptorBufferInfo storageBufferInfoCurrentFrame{};
-        storageBufferInfoCurrentFrame.buffer =
-            shaderStorageBuffers[i].GetBuffer();
-        storageBufferInfoCurrentFrame.offset = 0;
-        storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_COUNT;
-
-        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[2].dstSet = computeDescriptorSets[i];
-        descriptorWrites[2].dstBinding = 2;
-        descriptorWrites[2].dstArrayElement = 0;
-        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrites[2].descriptorCount = 1;
-        descriptorWrites[2].pBufferInfo = &storageBufferInfoCurrentFrame;
-
-        vkUpdateDescriptorSets(core.device, 3, descriptorWrites.data(), 0,
+        vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
+                               descriptorWrites.data(), 0,
                                nullptr);
     }
 }
@@ -803,6 +801,10 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
                          VK_SUBPASS_CONTENTS_INLINE);
+    
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            graphicsPipelineLayout, 0, 1,
+                            &graphicsDescriptorSets[imageIndex], 0, nullptr);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       graphicsPipeline);
@@ -825,7 +827,7 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer,
     VkBuffer shaderBuffer = shaderStorageBuffers[currentFrame].GetBuffer();
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &shaderBuffer, offsets);
 
-    vkCmdDraw(commandBuffer, PARTICLE_COUNT, 1, 0, 0);
+    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
     uiInterface.RecordToCommandBuffer(commandBuffer);
 

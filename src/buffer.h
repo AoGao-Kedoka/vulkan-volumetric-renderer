@@ -8,9 +8,8 @@
 
 class Buffer {
 public:
-    Buffer(Core core, VkDeviceSize size, VkBufferUsageFlags usage,
+    Buffer(Core* core, VkDeviceSize size, VkBufferUsageFlags usage,
            VkMemoryPropertyFlags properties);
-
     VkBuffer GetBuffer() { return buffer; }
     VkDeviceMemory GetDeviceMemory() { return bufferMemory; }
     void Cleanup();
@@ -27,7 +26,7 @@ private:
     {
         CheckValue();
         VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(core.physicalDevice,
+        vkGetPhysicalDeviceMemoryProperties(core->physicalDevice,
                                             &memProperties);
 
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
@@ -41,7 +40,7 @@ private:
         throw std::runtime_error("failed to find suitable memory type!");
     }
 
-    Core core;
+    Core* core;
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceMemory bufferMemory = VK_NULL_HANDLE;
 };

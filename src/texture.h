@@ -1,8 +1,9 @@
 #pragma once
 
-#include <string>
-#include <stdexcept>
 #include <vulkan/vulkan.h>
+
+#include <stdexcept>
+#include <string>
 
 #include "buffer.h"
 #include "core.h"
@@ -23,19 +24,20 @@ public:
         this->format = other.format;
         return *this;
     }
-
-    void CreateImage(uint32_t width, uint32_t height, VkFormat format,
-                     VkImageTiling tiling, VkImageUsageFlags usage,
-                     VkMemoryPropertyFlags properties, VkImage& image,
-                     VkDeviceMemory& imageMemory);
     Texture& CreateImageView();
     Texture& CreateImageSampler();
     VkImage GetImage() { return image; };
     VkImageView GetImageView() { return imageView; };
     VkSampler GetSampler() { return sampler; }
     VkFormat GetFormat() { return format; }
-    void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
     void Cleanup();
+    void CreateImage(uint32_t width, uint32_t height, VkFormat format,
+                     VkImageTiling tiling, VkImageUsageFlags usage,
+                     VkMemoryPropertyFlags properties, VkImage& image,
+                     VkDeviceMemory& imageMemory);
+    void TransitionImageLayout(VkImage image, VkFormat format,
+                               VkImageLayout oldLayout,
+                               VkImageLayout newLayout);
 private:
     Core* core = nullptr;
     VkImage image = VK_NULL_HANDLE;
