@@ -31,8 +31,6 @@
 #include "texture.h"
 #include "ui.h"
 
-
-
 struct UniformBufferObject {
     float deltaTime = 1.0f;
 };
@@ -78,7 +76,7 @@ public:
     {
         initWindow();
         initVulkan();
-        uiInterface.Init( 2, renderPass);
+        uiInterface.Init(2, renderPass);
         mainLoop();
         cleanup();
     }
@@ -174,14 +172,13 @@ private:
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass;
-    VkPipelineLayout graphicsPipelineLayout;
+    VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
 
     VkDescriptorSetLayout computeDescriptorSetLayout;
     VkDescriptorSetLayout graphicsDescriptorSetLayout;
     VkPipelineLayout computePipelineLayout;
     VkPipeline computePipeline;
-    Texture computeStoragetexture;
 
     std::vector<Buffer> shaderStorageBuffers;
 
@@ -190,7 +187,6 @@ private:
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> computeDescriptorSets;
-    std::vector<VkDescriptorSet> graphicsDescriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkCommandBuffer> computeCommandBuffers;
