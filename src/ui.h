@@ -11,13 +11,13 @@
 
 class UserInterface {
 public:
-    UserInterface(Core core):core{core}{};
-    void Init(Core core, uint32_t imageCount, VkRenderPass renderPass);
+    explicit UserInterface(Core* core):core{core}{};
+    void Init(uint32_t imageCount, VkRenderPass &renderPass);
     void Render();
     void RecordToCommandBuffer(VkCommandBuffer commandBuffer);
     void Cleanup();
 
 private:
-    Core core;
-    VkDescriptorPool imguiPool;
+    Core* core;
+    VkDescriptorPool imguiPool{};
 };

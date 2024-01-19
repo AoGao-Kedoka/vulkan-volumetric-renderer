@@ -78,7 +78,7 @@ public:
     {
         initWindow();
         initVulkan();
-        uiInterface.Init(core, 2, renderPass);
+        uiInterface.Init(2, renderPass);
         mainLoop();
         cleanup();
     }
@@ -205,5 +205,5 @@ private:
     bool framebufferResized = false;
     double lastTime = 0.0f;
 
-    UserInterface uiInterface { core };
+    UserInterface uiInterface { &core };
 };
