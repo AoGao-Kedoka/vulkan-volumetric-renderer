@@ -82,7 +82,8 @@ void Application::cleanup()
     vkDestroyDevice(core.device, nullptr);
 
     if (enableValidationLayers) {
-        Core::DestroyDebugUtilsMessengerEXT(core.instance, debugMessenger, nullptr);
+        Core::DestroyDebugUtilsMessengerEXT(core.instance, debugMessenger,
+                                            nullptr);
     }
 
     vkDestroySurfaceKHR(core.instance, core.surface, nullptr);
@@ -195,7 +196,7 @@ void Application::setupDebugMessenger()
     populateDebugMessengerCreateInfo(createInfo);
 
     if (Core::CreateDebugUtilsMessengerEXT(core.instance, &createInfo, nullptr,
-                                     &debugMessenger) != VK_SUCCESS) {
+                                           &debugMessenger) != VK_SUCCESS) {
         throw std::runtime_error("failed to set up debug messenger!");
     }
 }
@@ -236,7 +237,8 @@ void Application::createSwapChain()
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    Core::QueueFamilyIndices indices = core.FindQueueFamilies(core.physicalDevice);
+    Core::QueueFamilyIndices indices =
+        core.FindQueueFamilies(core.physicalDevice);
     uint32_t queueFamilyIndices[] = {indices.graphicsAndComputeFamily.value(),
                                      indices.presentFamily.value()};
 
@@ -246,8 +248,8 @@ void Application::createSwapChain()
         createInfo.pQueueFamilyIndices = queueFamilyIndices;
     } else {
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        createInfo.queueFamilyIndexCount = 0; // Optional
-        createInfo.pQueueFamilyIndices = nullptr; // Optional
+        createInfo.queueFamilyIndexCount = 0;      // Optional
+        createInfo.pQueueFamilyIndices = nullptr;  // Optional
     }
 
     createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
@@ -377,10 +379,7 @@ void Application::createComputeDescriptorSetLayout()
     }
 }
 
-void Application::createGraphicsDescriptorSetLayout()
-{
-    
-}
+void Application::createGraphicsDescriptorSetLayout() {}
 
 void Application::createGraphicsPipeline()
 {
@@ -537,10 +536,10 @@ void Application::createComputePipeline()
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1; // Optional
-    pipelineLayoutInfo.pSetLayouts = &computeDescriptorSetLayout; // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+    pipelineLayoutInfo.setLayoutCount = 1;                         // Optional
+    pipelineLayoutInfo.pSetLayouts = &computeDescriptorSetLayout;  // Optional
+    pipelineLayoutInfo.pushConstantRangeCount = 0;                 // Optional
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;              // Optional
 
     if (vkCreatePipelineLayout(core.device, &pipelineLayoutInfo, nullptr,
                                &computePipelineLayout) != VK_SUCCESS) {
@@ -551,8 +550,8 @@ void Application::createComputePipeline()
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pipelineInfo.layout = computePipelineLayout;
     pipelineInfo.stage = computeShaderStageInfo;
-    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
-    pipelineInfo.basePipelineIndex = -1; // Optional
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;  // Optional
+    pipelineInfo.basePipelineIndex = -1;               // Optional
 
     if (vkCreateComputePipelines(core.device, VK_NULL_HANDLE, 1, &pipelineInfo,
                                  nullptr, &computePipeline) != VK_SUCCESS) {
@@ -596,8 +595,8 @@ void Application::createCommandPool()
     poolInfo.queueFamilyIndex =
         queueFamilyIndices.graphicsAndComputeFamily.value();
 
-    if (vkCreateCommandPool(core.device, &poolInfo, nullptr, &core.commandPool) !=
-        VK_SUCCESS) {
+    if (vkCreateCommandPool(core.device, &poolInfo, nullptr,
+                            &core.commandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");
     }
 }

@@ -31,8 +31,6 @@
 #include "texture.h"
 #include "ui.h"
 
-
-
 struct UniformBufferObject {
     float deltaTime = 1.0f;
 };
@@ -205,5 +203,5 @@ private:
     bool framebufferResized = false;
     double lastTime = 0.0f;
 
-    UserInterface uiInterface { &core };
+    UserInterface uiInterface{&core};
 };

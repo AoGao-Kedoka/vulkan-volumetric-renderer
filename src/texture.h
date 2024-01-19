@@ -1,8 +1,9 @@
 #pragma once
 
-#include <string>
-#include <stdexcept>
 #include <vulkan/vulkan.h>
+
+#include <stdexcept>
+#include <string>
 
 #include "buffer.h"
 #include "core.h"
@@ -17,6 +18,7 @@ public:
     VkImageView GetImageView() { return imageView; };
     VkSampler GetSampler() { return sampler; }
     void Cleanup();
+
 private:
     Core core;
     VkImage image = VK_NULL_HANDLE;
@@ -30,6 +32,9 @@ private:
                      VkMemoryPropertyFlags properties, VkImage& image,
                      VkDeviceMemory& imageMemory);
 
-    void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+    void TransitionImageLayout(VkImage image, VkFormat format,
+                               VkImageLayout oldLayout,
+                               VkImageLayout newLayout);
+    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
+                           uint32_t height);
 };

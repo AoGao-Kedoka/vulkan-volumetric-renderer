@@ -35,7 +35,6 @@ void Core::endSingleTimeCommands(VkCommandBuffer commandBuffer)
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
-
 void Core::pickPhysicalDevice()
 {
     uint32_t deviceCount = 0;
@@ -126,8 +125,8 @@ void Core::createLogicalDevice()
         createInfo.enabledLayerCount = 0;
     }
 
-    if (vkCreateDevice(physicalDevice, &createInfo, nullptr,
-                       &device) != VK_SUCCESS) {
+    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) !=
+        VK_SUCCESS) {
         throw std::runtime_error("failed to create logical core.device!");
     }
 
@@ -135,8 +134,7 @@ void Core::createLogicalDevice()
                      &graphicsQueue);
     vkGetDeviceQueue(device, indices.graphicsAndComputeFamily.value(), 0,
                      &computeQueue);
-    vkGetDeviceQueue(device, indices.presentFamily.value(), 0,
-                     &presentQueue);
+    vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
 bool Core::isDeviceSuitable(VkPhysicalDevice device)
@@ -210,7 +208,8 @@ bool Core::checkDeviceExtensionSupport(VkPhysicalDevice device)
 
     return requiredExtensions.empty();
 }
-Core::SwapChainSupportDetails Core::QuerySwapChainSupport(VkPhysicalDevice device)
+Core::SwapChainSupportDetails Core::QuerySwapChainSupport(
+    VkPhysicalDevice device)
 {
     SwapChainSupportDetails details;
 

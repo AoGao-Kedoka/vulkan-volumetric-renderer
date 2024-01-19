@@ -1,7 +1,6 @@
 #include "ui.h"
 
-void UserInterface::Init(uint32_t imageCount,
-                         VkRenderPass &renderPass)
+void UserInterface::Init(uint32_t imageCount, VkRenderPass& renderPass)
 {
     VkDescriptorPoolSize pool_sizes[] = {
         {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
