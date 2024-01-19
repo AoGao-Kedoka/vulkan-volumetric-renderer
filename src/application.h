@@ -172,7 +172,7 @@ private:
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass;
-    VkPipelineLayout pipelineLayout;
+    VkPipelineLayout graphicsPipelineLayout;
     VkPipeline graphicsPipeline;
 
     VkDescriptorSetLayout computeDescriptorSetLayout;
@@ -187,9 +187,11 @@ private:
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> computeDescriptorSets;
+    std::vector<VkDescriptorSet> graphicsDescriptorSets;
 
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkCommandBuffer> computeCommandBuffers;
+    Texture computeStoragetexture;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
