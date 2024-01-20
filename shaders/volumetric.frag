@@ -9,5 +9,5 @@ layout(location = 0) in vec2 TexCoord;
 layout(location = 0) out vec4 finalColor;
 
 void main(){
-    finalColor = vec4(texture(storageTexture, TexCoord).rbg, 1.0);
+    finalColor = texture(causticTexture, TexCoord);
 }
