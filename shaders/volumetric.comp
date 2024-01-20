@@ -4,5 +4,5 @@
 layout (binding = 0, rgba8) uniform image2D storageTexture;
 
 void main() {
-    imageStore(storageTexture, ivec2(gl_GlobalInvocationID.xy), vec4(0.5, 0.5,0.5,0.5));
+    imageStore(storageTexture, ivec2(gl_GlobalInvocationID.xy), vec4(1.0, 0, 0, 1.0));
 }

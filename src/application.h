@@ -105,6 +105,7 @@ private:
     void createUniformBuffers();
     void createDescriptorPool();
     void createComputeDescriptorSets();
+    void createGraphicsDescriptorSets();
     void createCommandBuffers();
     void createComputeCommandBuffers();
     void recordComputeCommandBuffer(VkCommandBuffer commandBuffer);

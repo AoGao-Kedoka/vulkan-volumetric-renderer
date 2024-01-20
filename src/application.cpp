@@ -37,6 +37,7 @@ void Application::initVulkan()
     createUniformBuffers();
     createDescriptorPool();
     createComputeDescriptorSets();
+    //createGraphicsDescriptorSets();
     createCommandBuffers();
     createComputeCommandBuffers();
     createSyncObjects();
@@ -701,7 +702,7 @@ void Application::createDescriptorPool()
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = 2;
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT) * 10;
 
     if (vkCreateDescriptorPool(core.device, &poolInfo, nullptr,
                                &descriptorPool) != VK_SUCCESS) {
@@ -712,7 +713,7 @@ void Application::createDescriptorPool()
 void Application::createComputeDescriptorSets()
 {
     computeStoragetexture =
-        Texture{&core, WIDTH, HEIGHT, VK_FORMAT_R8G8B8A8_SRGB}
+        Texture{&core, WIDTH, HEIGHT, VK_FORMAT_R8G8B8A8_UNORM}
             .CreateImageView()
             .CreateImageSampler();
     computeStoragetexture.TransitionImageLayout(
@@ -754,6 +755,64 @@ void Application::createComputeDescriptorSets()
         vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
                                descriptorWrites.data(), 0,
                                nullptr);
+    }
+}
+void Application::createGraphicsDescriptorSets()
+{
+    Texture causticTexture{&core, FilePath::causticTexturePath,
+                           VK_FORMAT_R8G8B8A8_SRGB};
+    causticTexture.CreateImageView().CreateImageSampler();
+
+    computeStoragetexture.TransitionImageLayout(
+        computeStoragetexture.GetImage(), computeStoragetexture.GetFormat(),
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
+                                               graphicsDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+
+    graphicsDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkAllocateDescriptorSets(core.device, &allocInfo,
+                                 graphicsDescriptorSets.data()) != VK_SUCCESS) {
+        std::cout << vkAllocateDescriptorSets(core.device, &allocInfo,
+                                              graphicsDescriptorSets.data()) << std::endl;
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        VkDescriptorImageInfo computeStorageTextureInfo{};
+        computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        computeStorageTextureInfo.imageView =
+            computeStoragetexture.GetImageView();
+        computeStorageTextureInfo.sampler = computeStoragetexture.GetSampler();
+
+        VkDescriptorImageInfo causticTextureInfo{
+            causticTexture.GetSampler(), causticTexture.GetImageView(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = graphicsDescriptorSets[i];
+        descriptorWrites[0].descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].pImageInfo = &computeStorageTextureInfo;
+        descriptorWrites[0].descriptorCount = 1;
+
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = graphicsDescriptorSets[i];
+        descriptorWrites[1].descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].pImageInfo = &causticTextureInfo;
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].descriptorCount = 1;
+
+        vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
+                               descriptorWrites.data(), 0, nullptr);
     }
 }
 
@@ -813,9 +872,9 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer,
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
                          VK_SUBPASS_CONTENTS_INLINE);
     
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            graphicsPipelineLayout, 0, 1,
-                            &graphicsDescriptorSets[imageIndex], 0, nullptr);
+    //vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    //                        graphicsPipelineLayout, 0, 1,
+    //                        &graphicsDescriptorSets[imageIndex], 0, nullptr);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       graphicsPipeline);
@@ -903,7 +962,7 @@ void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
                             computePipelineLayout, 0, 1,
                             &computeDescriptorSets[currentFrame], 0, nullptr);
 
-    vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
+    vkCmdDispatch(commandBuffer, WIDTH/ 16, HEIGHT/16, 1);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to record compute command buffer!");
