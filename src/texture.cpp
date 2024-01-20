@@ -250,6 +250,8 @@ void Texture::Cleanup()
         vkFreeMemory(core->device, textureImageMemory, nullptr);
     if (imageView != VK_NULL_HANDLE)
         vkDestroyImageView(core->device, imageView, nullptr);
+    if (sampler != VK_NULL_HANDLE)
+        vkDestroySampler(core->device, sampler, nullptr);
     for (auto& buffer : bufferContainer) {
         buffer.Cleanup();
     }

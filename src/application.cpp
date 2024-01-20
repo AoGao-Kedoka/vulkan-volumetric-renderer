@@ -49,6 +49,9 @@ void Application::cleanup()
 
     uiInterface.Cleanup();
 
+    computeStorageTexture.Cleanup();
+    causticTexture.Cleanup();
+
     vkDestroyPipeline(core.device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(core.device, graphicsPipelineLayout, nullptr);
 
@@ -64,6 +67,8 @@ void Application::cleanup()
     vkDestroyDescriptorPool(core.device, descriptorPool, nullptr);
 
     vkDestroyDescriptorSetLayout(core.device, computeDescriptorSetLayout,
+                                 nullptr);
+    vkDestroyDescriptorSetLayout(core.device, graphicsDescriptorSetLayout,
                                  nullptr);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -712,12 +717,12 @@ void Application::createDescriptorPool()
 
 void Application::createComputeDescriptorSets()
 {
-    computeStoragetexture =
+    computeStorageTexture =
         Texture{&core, WIDTH, HEIGHT, VK_FORMAT_R8G8B8A8_UNORM}
             .CreateImageView()
             .CreateImageSampler();
-    computeStoragetexture.TransitionImageLayout(
-        computeStoragetexture.GetImage(), computeStoragetexture.GetFormat(),
+    computeStorageTexture.TransitionImageLayout(
+        computeStorageTexture.GetImage(), computeStorageTexture.GetFormat(),
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
@@ -740,8 +745,8 @@ void Application::createComputeDescriptorSets()
         VkDescriptorImageInfo computeStorageTextureInfo{};
         computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         computeStorageTextureInfo.imageView =
-            computeStoragetexture.GetImageView();
-        computeStorageTextureInfo.sampler = computeStoragetexture.GetSampler();
+            computeStorageTexture.GetImageView();
+        computeStorageTextureInfo.sampler = computeStorageTexture.GetSampler();
 
         std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -759,13 +764,9 @@ void Application::createComputeDescriptorSets()
 }
 void Application::createGraphicsDescriptorSets()
 {
-    Texture causticTexture{&core, FilePath::causticTexturePath,
+    causticTexture = Texture{&core, FilePath::causticTexturePath,
                            VK_FORMAT_R8G8B8A8_SRGB};
     causticTexture.CreateImageView().CreateImageSampler();
-
-    computeStoragetexture.TransitionImageLayout(
-        computeStoragetexture.GetImage(), computeStoragetexture.GetFormat(),
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                graphicsDescriptorSetLayout);
@@ -785,10 +786,10 @@ void Application::createGraphicsDescriptorSets()
     }
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         VkDescriptorImageInfo computeStorageTextureInfo{};
-        computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         computeStorageTextureInfo.imageView =
-            computeStoragetexture.GetImageView();
-        computeStorageTextureInfo.sampler = computeStoragetexture.GetSampler();
+            computeStorageTexture.GetImageView();
+        computeStorageTextureInfo.sampler = computeStorageTexture.GetSampler();
 
         VkDescriptorImageInfo causticTextureInfo{
             causticTexture.GetSampler(), causticTexture.GetImageView(),

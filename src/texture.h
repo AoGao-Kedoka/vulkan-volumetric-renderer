@@ -22,8 +22,10 @@ public:
         this->imageView = other.imageView;
         this->sampler = other.sampler;
         this->format = other.format;
+        this->bufferContainer = other.bufferContainer;
         return *this;
     }
+
     Texture& CreateImageView();
     Texture& CreateImageSampler();
     VkImage GetImage() { return image; };

@@ -192,7 +192,8 @@ private:
 
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkCommandBuffer> computeCommandBuffers;
-    Texture computeStoragetexture;
+    Texture computeStorageTexture;
+    Texture causticTexture;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -200,7 +201,7 @@ private:
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> computeInFlightFences;
     uint32_t currentFrame = 0;
-
+    
     float lastFrameTime = 0.0f;
     bool framebufferResized = false;
     double lastTime = 0.0f;
