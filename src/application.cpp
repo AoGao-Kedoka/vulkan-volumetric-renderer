@@ -29,15 +29,15 @@ void Application::initVulkan()
     createRenderPass();
     createComputeDescriptorSetLayout();
     createGraphicsDescriptorSetLayout();
-    createGraphicsPipeline();
     createComputePipeline();
+    createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
     createShaderStorageBuffers();
     createUniformBuffers();
     createDescriptorPool();
     createComputeDescriptorSets();
-    //createGraphicsDescriptorSets();
+    createGraphicsDescriptorSets();
     createCommandBuffers();
     createComputeCommandBuffers();
     createSyncObjects();
@@ -505,7 +505,7 @@ void Application::createGraphicsPipeline()
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pSetLayouts = &graphicsDescriptorSetLayout;
 
@@ -872,9 +872,9 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer,
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
                          VK_SUBPASS_CONTENTS_INLINE);
     
-    //vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    //                        graphicsPipelineLayout, 0, 1,
-    //                        &graphicsDescriptorSets[imageIndex], 0, nullptr);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            graphicsPipelineLayout, 0, 1,
+                            &graphicsDescriptorSets[currentFrame], 0, nullptr);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       graphicsPipeline);
