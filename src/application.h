@@ -33,6 +33,7 @@
 
 struct UniformBufferObject {
     float deltaTime = 1.0f;
+    float totalTime = 0;
 };
 
 struct Particle {
@@ -157,6 +158,7 @@ private:
     {
         UniformBufferObject ubo{};
         ubo.deltaTime = lastFrameTime * 2.0f;
+        ubo.totalTime = glfwGetTime();
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }

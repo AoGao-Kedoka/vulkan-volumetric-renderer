@@ -56,10 +56,16 @@ void UserInterface::Init(uint32_t imageCount, VkRenderPass& renderPass)
 
 void UserInterface::Render()
 {
+    ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    // ImGui::ShowDemoWindow();
+    ImGui::Begin("Volumetric Rendering Window");
+    ImGui::SetWindowSize(ImVec2(300,100));
+    ImGui::Text("Team:");
+    ImGui::Text("Karl Zakhary, Pascal Neubert, Ao Gao");
+    ImGui::Text("FPS:  %.3f", 1.0 / io.DeltaTime);
+    ImGui::End();
     // Add UI stuffs here
     ImGui::Render();
 }
