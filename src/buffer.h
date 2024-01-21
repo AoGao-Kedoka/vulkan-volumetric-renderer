@@ -18,13 +18,13 @@ private:
     void CheckValue()
     {
         if (buffer == VK_NULL_HANDLE || bufferMemory == VK_NULL_HANDLE)
-            std::runtime_error("Something went wrong with buffer");
+            throw std::runtime_error("Something went wrong with buffer");
     }
 
     uint32_t findMemoryType(uint32_t typeFilter,
                             VkMemoryPropertyFlags properties)
     {
-        CheckValue();
+//        CheckValue();
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(core->physicalDevice,
                                             &memProperties);
