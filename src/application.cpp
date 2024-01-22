@@ -353,13 +353,28 @@ void Application::createRenderPass()
 
 void Application::createComputeDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 1> layoutBindings{};
+    std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings{};
+
+    // Storage texture
     layoutBindings[0].binding = 0;
     layoutBindings[0].descriptorCount = 1;
     layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     layoutBindings[0].pImmutableSamplers = nullptr;
     layoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
+    // Time vector uniform buffer
+    layoutBindings[1].binding = 1;
+    layoutBindings[1].descriptorCount = 1;
+    layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    layoutBindings[1].pImmutableSamplers = nullptr;
+    layoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // Particles data storage buffer
+    layoutBindings[2].binding = 2;
+    layoutBindings[2].descriptorCount = 1;
+    layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindings[2].pImmutableSamplers = nullptr;
+    layoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -377,17 +392,19 @@ void Application::createComputeDescriptorSetLayout()
 void Application::createGraphicsDescriptorSetLayout()
 {
     // 0: Texture from compute shader, 1: Caustic texture
-    std::array<VkDescriptorSetLayoutBinding, 2> layoutBindings;
+    std::array<VkDescriptorSetLayoutBinding, 2> layoutBindings{};
 
     layoutBindings[0].binding = 0;
     layoutBindings[0].descriptorCount = 1;
-    layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[0].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     layoutBindings[0].pImmutableSamplers = nullptr;
     layoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     layoutBindings[1].binding = 1;
     layoutBindings[1].descriptorCount = 1;
-    layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[1].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     layoutBindings[1].pImmutableSamplers = nullptr;
     layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -433,22 +450,10 @@ void Application::createGraphicsPipeline()
     vertexInputInfo.sType =
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    auto bindingDescription = Particle::getBindingDescription();
-    auto attributeDescriptions = Particle::getAttributeDescriptions();
-
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.vertexAttributeDescriptionCount =
-        static_cast<uint32_t>(attributeDescriptions.size());
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType =
         VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    /**
-     * Point list topology only for the sake of drawing the particles, might be
-     * VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST if triangles are used
-     */
+
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
@@ -632,15 +637,18 @@ void Application::createShaderStorageBuffers()
 
     // Initial particle positions on a circle
     std::vector<Particle> particles(PARTICLE_COUNT);
+    int z = 0;
     for (auto& particle : particles) {
         float r = 0.25f * sqrt(rndDist(rndEngine));
         float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
         float x = r * cos(theta) * HEIGHT / WIDTH;
         float y = r * sin(theta);
-        particle.position = glm::vec2(x, y);
-        particle.velocity = glm::normalize(glm::vec2(x, y)) * 0.00025f;
+        int s = z % 4 + 1;
+        particle.position = glm::vec4(x, y, z, (6 - s) * .25);
+        particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
         particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
                                    rndDist(rndEngine), 1.0f);
+        ++z;
     }
 
     VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
@@ -660,7 +668,6 @@ void Application::createShaderStorageBuffers()
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         Buffer shaderStorageBuffer{&core, bufferSize,
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                                        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT};
         copyBuffer(stagingBuffer.GetBuffer(), shaderStorageBuffer.GetBuffer(),
@@ -745,33 +752,57 @@ void Application::createComputeDescriptorSets()
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
 
-
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-
         VkDescriptorImageInfo computeStorageTextureInfo{};
         computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         computeStorageTextureInfo.imageView =
             computeStorageTexture.GetImageView();
         computeStorageTextureInfo.sampler = computeStorageTexture.GetSampler();
 
-        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = computeDescriptorSets[i];
         descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].pImageInfo = &computeStorageTextureInfo;
         descriptorWrites[0].descriptorCount = 1;
-        
+
+        VkDescriptorBufferInfo uniformBufferInfo{};
+        uniformBufferInfo.buffer = uniformBuffers[i].GetBuffer();
+        uniformBufferInfo.offset = 0;
+        uniformBufferInfo.range = sizeof(UniformBufferObject);
+
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = computeDescriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pBufferInfo = &uniformBufferInfo;
+
+        // Particles storage buffer
+        VkDescriptorBufferInfo particlesStorageBuffer{};
+        particlesStorageBuffer.buffer =
+            shaderStorageBuffers[(i - 1) % MAX_FRAMES_IN_FLIGHT].GetBuffer();
+        particlesStorageBuffer.offset = 0;
+        particlesStorageBuffer.range = sizeof(Particle) * PARTICLE_COUNT;
+
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = computeDescriptorSets[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pBufferInfo = &particlesStorageBuffer;
 
         vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
-                               descriptorWrites.data(), 0,
-                               nullptr);
+                               descriptorWrites.data(), 0, nullptr);
     }
 }
 void Application::createGraphicsDescriptorSets()
 {
-    causticTexture = Texture{&core, FilePath::causticTexturePath,
-                           VK_FORMAT_R8G8B8A8_SRGB};
+    causticTexture =
+        Texture{&core, FilePath::causticTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
     causticTexture.CreateImageView().CreateImageSampler();
 
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
@@ -787,7 +818,8 @@ void Application::createGraphicsDescriptorSets()
     if (vkAllocateDescriptorSets(core.device, &allocInfo,
                                  graphicsDescriptorSets.data()) != VK_SUCCESS) {
         std::cout << vkAllocateDescriptorSets(core.device, &allocInfo,
-                                              graphicsDescriptorSets.data()) << std::endl;
+                                              graphicsDescriptorSets.data())
+                  << std::endl;
         throw std::runtime_error("failed to allocate descriptor sets!");
     }
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -878,7 +910,7 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer,
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
                          VK_SUBPASS_CONTENTS_INLINE);
-    
+
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             graphicsPipelineLayout, 0, 1,
                             &graphicsDescriptorSets[currentFrame], 0, nullptr);
@@ -901,8 +933,6 @@ void Application::recordCommandBuffer(VkCommandBuffer commandBuffer,
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
     VkDeviceSize offsets[] = {0};
-    VkBuffer shaderBuffer = shaderStorageBuffers[currentFrame].GetBuffer();
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &shaderBuffer, offsets);
 
     vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
@@ -969,7 +999,7 @@ void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
                             computePipelineLayout, 0, 1,
                             &computeDescriptorSets[currentFrame], 0, nullptr);
 
-    vkCmdDispatch(commandBuffer, WIDTH/ 16, HEIGHT/16, 1);
+    vkCmdDispatch(commandBuffer, WIDTH / 16, HEIGHT / 16, 1);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to record compute command buffer!");
@@ -1072,7 +1102,8 @@ void Application::drawFrame()
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-VkShaderModule Application::createShaderModule(const std::vector<char>& code)
+VkShaderModule Application::createShaderModule(
+    const std::vector<char>& code) const
 {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1105,6 +1136,9 @@ VkPresentModeKHR Application::chooseSwapPresentMode(
     const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
     for (const auto& availablePresentMode : availablePresentModes) {
+        /**
+         * https://github.com/KhronosGroup/Vulkan-Samples/tree/main/samples/performance/swapchain_images#best-practice-summary
+         */
         if (availablePresentMode == VK_PRESENT_MODE_FIFO_KHR) {
             return availablePresentMode;
         }
@@ -1114,7 +1148,7 @@ VkPresentModeKHR Application::chooseSwapPresentMode(
 }
 
 VkExtent2D Application::chooseSwapExtent(
-    const VkSurfaceCapabilitiesKHR& capabilities)
+    const VkSurfaceCapabilitiesKHR& capabilities) const
 {
     if (capabilities.currentExtent.width !=
         std::numeric_limits<uint32_t>::max()) {

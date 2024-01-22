@@ -33,42 +33,13 @@
 
 struct UniformBufferObject {
     float deltaTime = 1.0f;
-    float totalTime = 0;
+    float totalTime = 0.0f;
 };
 
 struct Particle {
-    glm::vec2 position;
-    glm::vec2 velocity;
+    glm::vec4 position;  // position.w -> scale of particle;
+    glm::vec3 velocity;
     glm::vec4 color;
-
-    static VkVertexInputBindingDescription getBindingDescription()
-    {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Particle);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        return bindingDescription;
-    }
-
-    static std::array<VkVertexInputAttributeDescription, 2>
-    getAttributeDescriptions()
-    {
-        std::array<VkVertexInputAttributeDescription, 2>
-            attributeDescriptions{};
-
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Particle, position);
-
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Particle, color);
-
-        return attributeDescriptions;
-    }
 };
 
 class Application {
@@ -114,13 +85,15 @@ private:
                              uint32_t imageIndex);
     void createSyncObjects();
     void drawFrame();
-    VkShaderModule createShaderModule(const std::vector<char>& code);
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(
+    [[nodiscard]] VkShaderModule createShaderModule(
+        const std::vector<char>& code) const;
+    static VkSurfaceFormatKHR chooseSwapSurfaceFormat(
         const std::vector<VkSurfaceFormatKHR>& availableFormats);
-    VkPresentModeKHR chooseSwapPresentMode(
+    static VkPresentModeKHR chooseSwapPresentMode(
         const std::vector<VkPresentModeKHR>& availablePresentModes);
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-    std::vector<const char *> getRequiredExtensions();
+    [[nodiscard]] VkExtent2D chooseSwapExtent(
+        const VkSurfaceCapabilitiesKHR& capabilities) const;
+    static std::vector<const char *> getRequiredExtensions();
 
     static void framebufferResizeCallback(GLFWwindow *window, int width,
                                           int height)
@@ -203,10 +176,10 @@ private:
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> computeInFlightFences;
     uint32_t currentFrame = 0;
-    
+
     float lastFrameTime = 0.0f;
     bool framebufferResized = false;
     double lastTime = 0.0f;
 
-    UserInterface uiInterface { &core };
+    UserInterface uiInterface{&core};
 };
