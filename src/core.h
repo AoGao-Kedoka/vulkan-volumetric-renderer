@@ -175,5 +175,4 @@ private:
     void createLogicalDevice();
     bool isDeviceSuitable(VkPhysicalDevice device);
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-    void createSurface();
 };

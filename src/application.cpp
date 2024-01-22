@@ -1,7 +1,7 @@
 #include "application.h"
 
 const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;
+const uint32_t HEIGHT = 800;
 const uint32_t PARTICLE_COUNT = 8192;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -164,10 +164,17 @@ void Application::createInstance()
         createInfo.enabledLayerCount =
             static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
-
-        populateDebugMessengerCreateInfo(debugCreateInfo);
         createInfo.pNext =
             (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
+
+        VkValidationFeatureEnableEXT enabled[] = {VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
+        VkValidationFeaturesEXT      features{VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
+        features.disabledValidationFeatureCount = 0;
+        features.enabledValidationFeatureCount  = 1;
+        features.pDisabledValidationFeatures    = nullptr;
+        features.pEnabledValidationFeatures     = enabled;
+        createInfo.pNext                     = &features;
+        populateDebugMessengerCreateInfo(debugCreateInfo);
     } else {
         createInfo.enabledLayerCount = 0;
 
@@ -185,7 +192,7 @@ void Application::populateDebugMessengerCreateInfo(
     createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     createInfo.messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
         VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
         VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
