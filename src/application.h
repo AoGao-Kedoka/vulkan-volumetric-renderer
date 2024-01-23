@@ -169,6 +169,7 @@ private:
     std::vector<VkCommandBuffer> computeCommandBuffers;
     Texture computeStorageTexture;
     Texture causticTexture;
+    Texture computeCloudNoiseTexture;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;

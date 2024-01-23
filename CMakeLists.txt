@@ -118,6 +118,10 @@ else()
     set(GLSLC glslc)
 endif(WIN32)
 
+if(APPLE)
+    add_definitions(-DVK_ENABLE_BETA_EXTENSIONS)
+endif()
+
 file(GLOB_RECURSE GLSL_SOURCE_FILES
     "${PROJECT_SOURCE_DIR}/shaders/*.frag"
     "${PROJECT_SOURCE_DIR}/shaders/*.vert"
