@@ -51,6 +51,7 @@ void Application::cleanup()
 
     computeStorageTexture.Cleanup();
     causticTexture.Cleanup();
+    computeCloudNoiseTexture.Cleanup();
 
     vkDestroyPipeline(core.device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(core.device, graphicsPipelineLayout, nullptr);
@@ -167,13 +168,15 @@ void Application::createInstance()
         createInfo.pNext =
             (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
 
-        VkValidationFeatureEnableEXT enabled[] = {VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
-        VkValidationFeaturesEXT      features{VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
+        VkValidationFeatureEnableEXT enabled[] = {
+            VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
+        VkValidationFeaturesEXT features{
+            VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
         features.disabledValidationFeatureCount = 0;
-        features.enabledValidationFeatureCount  = 1;
-        features.pDisabledValidationFeatures    = nullptr;
-        features.pEnabledValidationFeatures     = enabled;
-        createInfo.pNext                     = &features;
+        features.enabledValidationFeatureCount = 1;
+        features.pDisabledValidationFeatures = nullptr;
+        features.pEnabledValidationFeatures = enabled;
+        createInfo.pNext = &features;
         populateDebugMessengerCreateInfo(debugCreateInfo);
     } else {
         createInfo.enabledLayerCount = 0;
@@ -360,7 +363,7 @@ void Application::createRenderPass()
 
 void Application::createComputeDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings{};
+    std::array<VkDescriptorSetLayoutBinding, 4> layoutBindings{};
 
     // Storage texture
     layoutBindings[0].binding = 0;
@@ -382,6 +385,14 @@ void Application::createComputeDescriptorSetLayout()
     layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     layoutBindings[2].pImmutableSamplers = nullptr;
     layoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // Noise texture sampler
+    layoutBindings[3].binding = 3;
+    layoutBindings[3].descriptorCount = 1;
+    layoutBindings[3].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[3].pImmutableSamplers = nullptr;
+    layoutBindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -558,8 +569,7 @@ void Application::createGraphicsPipeline()
 
 void Application::createComputePipeline()
 {
-    auto computeShaderCode = Core::ReadFile(FilePath::computeShaderPath);
-
+    auto computeShaderCode = Core::ReadFile(FilePath::smokeShaderPath);
     VkShaderModule computeShaderModule = createShaderModule(computeShaderCode);
 
     VkPipelineShaderStageCreateInfo computeShaderStageInfo{};
@@ -745,6 +755,10 @@ void Application::createComputeDescriptorSets()
         computeStorageTexture.GetImage(), computeStorageTexture.GetFormat(),
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
+    computeCloudNoiseTexture = Texture{
+        &core, FilePath::computeCloudNoiseTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
+    computeCloudNoiseTexture.CreateImageView().CreateImageSampler();
+
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                computeDescriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -760,13 +774,14 @@ void Application::createComputeDescriptorSets()
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
+
         VkDescriptorImageInfo computeStorageTextureInfo{};
         computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         computeStorageTextureInfo.imageView =
             computeStorageTexture.GetImageView();
         computeStorageTextureInfo.sampler = computeStorageTexture.GetSampler();
 
-        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = computeDescriptorSets[i];
         descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -801,6 +816,20 @@ void Application::createComputeDescriptorSets()
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrites[2].descriptorCount = 1;
         descriptorWrites[2].pBufferInfo = &particlesStorageBuffer;
+
+        // Noise texture sampler
+        VkDescriptorImageInfo noiseTextureInfo{
+            computeCloudNoiseTexture.GetSampler(),
+            computeCloudNoiseTexture.GetImageView(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+        descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[3].dstSet = computeDescriptorSets[i];
+        descriptorWrites[3].descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[3].pImageInfo = &noiseTextureInfo;
+        descriptorWrites[3].dstBinding = 3;
+        descriptorWrites[3].descriptorCount = 1;
 
         vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
                                descriptorWrites.data(), 0, nullptr);
