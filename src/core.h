@@ -3,6 +3,10 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
+#ifdef __APPLE__
+#include <vulkan/vulkan_beta.h>
+#endif
+
 #include <algorithm>
 #include <cstring>
 #include <fstream>
@@ -83,10 +87,13 @@ public:
 
 #ifdef __APPLE__
     const std::vector<const char *> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, "VK_KHR_portability_subset"};
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME,
+        VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME};
 #else
     const std::vector<const char *> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME};
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME};
 #endif
 
     //----------------------------------------------------------------
@@ -175,4 +182,5 @@ private:
     void createLogicalDevice();
     bool isDeviceSuitable(VkPhysicalDevice device);
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+    bool checkInstanceExtensionSupport(VkInstance instance);
 };

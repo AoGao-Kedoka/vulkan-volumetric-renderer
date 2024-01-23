@@ -101,8 +101,21 @@ void Core::createLogicalDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
+    VkPhysicalDeviceFeatures2 deviceFeatures2{};
+    deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+#ifdef __APPLE__
+    VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures{};
+    portabilityFeatures.mutableComparisonSamplers = VK_TRUE;
+    portabilityFeatures.sType =
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
+
+    deviceFeatures2.pNext = &portabilityFeatures;
+#endif
+
     VkPhysicalDeviceFeatures deviceFeatures{};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
+    deviceFeatures2.features = deviceFeatures;
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -111,7 +124,7 @@ void Core::createLogicalDevice()
         static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
 
-    createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.pNext = &deviceFeatures2;
 
     createInfo.enabledExtensionCount =
         static_cast<uint32_t>(deviceExtensions.size());

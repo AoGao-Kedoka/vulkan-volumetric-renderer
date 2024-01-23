@@ -3,7 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-Texture::Texture(Core* core, std::string imagePath, VkFormat format)
+Texture::Texture(Core *core, std::string imagePath, VkFormat format)
     : core{core}, format{format}
 {
     // texture image with pixel content
@@ -22,15 +22,15 @@ Texture::Texture(Core* core, std::string imagePath, VkFormat format)
     bufferContainer.push_back(stagingBuffer);
 
     void *data;
-    vkMapMemory(core->device, stagingBuffer.GetDeviceMemory(), 0, imageSize,
-                0, &data);
+    vkMapMemory(core->device, stagingBuffer.GetDeviceMemory(), 0, imageSize, 0,
+                &data);
     memcpy(data, pixels, static_cast<size_t>(imageSize));
     vkUnmapMemory(core->device, stagingBuffer.GetDeviceMemory());
     stbi_image_free(pixels);
 
     CreateImage(texWidth, texHeight, format, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, textureImageMemory);
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, textureImageMemory);
 
     // command buffer: copy buffer to the image
     TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM,
@@ -44,12 +44,13 @@ Texture::Texture(Core* core, std::string imagePath, VkFormat format)
                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
-Texture::Texture(Core* core, uint32_t width, uint32_t height, VkFormat format)
+Texture::Texture(Core *core, uint32_t width, uint32_t height, VkFormat format)
     : core{core}, format{format}
 {
     // storage image
     CreateImage(width, height, format, VK_IMAGE_TILING_OPTIMAL,
-                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                    VK_IMAGE_USAGE_STORAGE_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, textureImageMemory);
 }
 
@@ -75,7 +76,8 @@ void Texture::CreateImage(uint32_t width, uint32_t height, VkFormat format,
         VK_SHARING_MODE_EXCLUSIVE;  // we don't use another queue family for the
                                     // compute shader
 
-    if (vkCreateImage(core->device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+    if (vkCreateImage(core->device, &imageInfo, nullptr, &image) !=
+        VK_SUCCESS) {
         throw std::runtime_error("failed to create image!");
     }
 
@@ -89,7 +91,7 @@ void Texture::CreateImage(uint32_t width, uint32_t height, VkFormat format,
         core->findMemoryType(memRequirements.memoryTypeBits, properties);
 
     if (vkAllocateMemory(core->device, &allocInfo, nullptr, &imageMemory) !=
-            VK_SUCCESS) {
+        VK_SUCCESS) {
         throw std::runtime_error("failed to allocate image memory!");
     }
 
@@ -110,7 +112,7 @@ Texture& Texture::CreateImageView()
     imageViewInfo.subresourceRange.layerCount = 1;
 
     if (vkCreateImageView(core->device, &imageViewInfo, nullptr, &imageView) !=
-            VK_SUCCESS) {
+        VK_SUCCESS) {
         throw std::runtime_error("Faild to create image view");
     }
     return *this;
@@ -127,12 +129,7 @@ Texture& Texture::CreateImageSampler()
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
-    /**
-     * Might set it to true later,
-     * This is mainly used for percentage-closer filtering on shadow maps
-     * Currently supporter only in beta on MoltenVK
-     */
-    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareEnable = VK_TRUE;
     samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     samplerInfo.mipLodBias = 0.0f;
@@ -140,7 +137,7 @@ Texture& Texture::CreateImageSampler()
     samplerInfo.maxLod = 0.0f;
 
     if (vkCreateSampler(core->device, &samplerInfo, nullptr, &sampler) !=
-            VK_SUCCESS) {
+        VK_SUCCESS) {
         throw std::runtime_error("Failed to create texture sampler");
     }
     return *this;
@@ -193,9 +190,8 @@ void Texture::TransitionImageLayout(VkImage image, VkFormat format,
 
         sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-            newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+    } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+               newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
         barrier.srcAccessMask = 0;
         barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
@@ -221,7 +217,7 @@ void Texture::TransitionImageLayout(VkImage image, VkFormat format,
     }
 
     vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0,
-            nullptr, 0, nullptr, 1, &barrier);
+                         nullptr, 0, nullptr, 1, &barrier);
     core->endSingleTimeCommands(commandBuffer);
 }
 
