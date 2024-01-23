@@ -3,9 +3,10 @@
 #include <string>
 
 struct FilePath {
-    inline const static std::string computeShaderPath{
+    inline const static std::string computeFluidShaderPath{
         "./shaders/volumetric_comp.spv"};
-    inline const static std::string smokeShaderPath{"./shaders/smoke_comp.spv"};
+    inline const static std::string computeSmokeShaderPath{
+        "./shaders/smoke_comp.spv"};
     inline const static std::string vertexShaderPath{
         "./shaders/volumetric_vert.spv"};
     inline const static std::string fragmentShaderPath{

@@ -29,7 +29,10 @@ void Application::initVulkan()
     createRenderPass();
     createComputeDescriptorSetLayout();
     createGraphicsDescriptorSetLayout();
-    createComputePipeline();
+    createComputePipeline(FilePath::computeFluidShaderPath,
+                          computeFluidPipelineLayout, computeFluidPipeline);
+    createComputePipeline(FilePath::computeSmokeShaderPath,
+                          computeSmokePipelineLayout, computeSmokePipeline);
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
@@ -56,8 +59,10 @@ void Application::cleanup()
     vkDestroyPipeline(core.device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(core.device, graphicsPipelineLayout, nullptr);
 
-    vkDestroyPipeline(core.device, computePipeline, nullptr);
-    vkDestroyPipelineLayout(core.device, computePipelineLayout, nullptr);
+    vkDestroyPipeline(core.device, computeFluidPipeline, nullptr);
+    vkDestroyPipelineLayout(core.device, computeFluidPipelineLayout, nullptr);
+    vkDestroyPipeline(core.device, computeSmokePipeline, nullptr);
+    vkDestroyPipelineLayout(core.device, computeSmokePipelineLayout, nullptr);
 
     vkDestroyRenderPass(core.device, renderPass, nullptr);
 
@@ -187,6 +192,8 @@ void Application::createInstance()
     if (vkCreateInstance(&createInfo, nullptr, &core.instance) != VK_SUCCESS) {
         throw std::runtime_error("failed to create core.instance!");
     }
+
+    std::cout << "[INFO] Vulkan instance created..." << std::endl;
 }
 
 void Application::populateDebugMessengerCreateInfo(
@@ -223,6 +230,8 @@ void Application::createSurface()
                                 &core.surface) != VK_SUCCESS) {
         throw std::runtime_error("failed to create core.window surface!");
     }
+
+    std::cout << "[INFO] Vulkan surface created..." << std::endl;
 }
 
 void Application::createSwapChain()
@@ -288,6 +297,7 @@ void Application::createSwapChain()
 
     swapChainImageFormat = surfaceFormat.format;
     swapChainExtent = extent;
+    std::cout << "[INFO] Vulkan swapchain created..." << std::endl;
 }
 
 void Application::createImageViews()
@@ -359,6 +369,7 @@ void Application::createRenderPass()
                            &renderPass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
     }
+    std::cout << "[INFO] Vulkan render pass created..." << std::endl;
 }
 
 void Application::createComputeDescriptorSetLayout()
@@ -405,6 +416,9 @@ void Application::createComputeDescriptorSetLayout()
         throw std::runtime_error(
             "failed to create compute descriptor set layout!");
     }
+
+    std::cout << "[INFO] Vulkan comptute descriptor set layout created..."
+              << std::endl;
 }
 
 void Application::createGraphicsDescriptorSetLayout()
@@ -437,6 +451,8 @@ void Application::createGraphicsDescriptorSetLayout()
         throw std::runtime_error(
             "failed to create compute descriptor set layout!");
     }
+    std::cout << "[INFO] Vulkan graphics descriptor set layout created..."
+              << std::endl;
 }
 
 void Application::createGraphicsPipeline()
@@ -565,11 +581,14 @@ void Application::createGraphicsPipeline()
 
     vkDestroyShaderModule(core.device, fragShaderModule, nullptr);
     vkDestroyShaderModule(core.device, vertShaderModule, nullptr);
+    std::cout << "[INFO] Vulkan graphics pipeline created..." << std::endl;
 }
 
-void Application::createComputePipeline()
+void Application::createComputePipeline(std::string computeShaderPath,
+                                        VkPipelineLayout& computeLayout,
+                                        VkPipeline& computePipeline)
 {
-    auto computeShaderCode = Core::ReadFile(FilePath::smokeShaderPath);
+    auto computeShaderCode = Core::ReadFile(computeShaderPath);
     VkShaderModule computeShaderModule = createShaderModule(computeShaderCode);
 
     VkPipelineShaderStageCreateInfo computeShaderStageInfo{};
@@ -587,13 +606,13 @@ void Application::createComputePipeline()
     pipelineLayoutInfo.pPushConstantRanges = nullptr;              // Optional
 
     if (vkCreatePipelineLayout(core.device, &pipelineLayoutInfo, nullptr,
-                               &computePipelineLayout) != VK_SUCCESS) {
+                               &computeLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create compute pipeline layout!");
     }
 
     VkComputePipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineInfo.layout = computePipelineLayout;
+    pipelineInfo.layout = computeLayout;
     pipelineInfo.stage = computeShaderStageInfo;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;  // Optional
     pipelineInfo.basePipelineIndex = -1;               // Optional
@@ -604,6 +623,7 @@ void Application::createComputePipeline()
     }
 
     vkDestroyShaderModule(core.device, computeShaderModule, nullptr);
+    std::cout << "[INFO] Vulkan compute pipeline created..." << std::endl;
 }
 
 void Application::createFramebuffers()
@@ -627,6 +647,7 @@ void Application::createFramebuffers()
             throw std::runtime_error("failed to create framebuffer!");
         }
     }
+    std::cout << "[INFO] Vulkan frame buffer created..." << std::endl;
 }
 
 void Application::createCommandPool()
@@ -644,6 +665,7 @@ void Application::createCommandPool()
                             &core.commandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");
     }
+    std::cout << "[INFO] Vulkan command pool created..." << std::endl;
 }
 
 void Application::createShaderStorageBuffers()
@@ -743,6 +765,7 @@ void Application::createDescriptorPool()
                                &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
+    std::cout << "[INFO] Vulkan descriptor pool created..." << std::endl;
 }
 
 void Application::createComputeDescriptorSets()
@@ -905,6 +928,7 @@ void Application::createCommandBuffers()
                                  commandBuffers.data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");
     }
+    std::cout << "[INFO] Vulkan command buffer created..." << std::endl;
 }
 
 void Application::createComputeCommandBuffers()
@@ -921,6 +945,7 @@ void Application::createComputeCommandBuffers()
                                  computeCommandBuffers.data()) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate compute command buffers!");
     }
+    std::cout << "[INFO] Vulkan command buffer created..." << std::endl;
 }
 
 void Application::recordCommandBuffer(VkCommandBuffer commandBuffer,
@@ -1029,11 +1054,14 @@ void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
     }
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                      computePipeline);
+                      core.CurrentPipeline == 0 ? computeFluidPipeline
+                                                : computeSmokePipeline);
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                            computePipelineLayout, 0, 1,
-                            &computeDescriptorSets[currentFrame], 0, nullptr);
+    vkCmdBindDescriptorSets(
+        commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+        core.CurrentPipeline == 0 ? computeFluidPipelineLayout
+                                  : computeSmokePipelineLayout,
+        0, 1, &computeDescriptorSets[currentFrame], 0, nullptr);
 
     vkCmdDispatch(commandBuffer, WIDTH / 16, HEIGHT / 16, 1);
 

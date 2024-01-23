@@ -61,10 +61,22 @@ void UserInterface::Render()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::Begin("Volumetric Rendering Window");
-    ImGui::SetWindowSize(ImVec2(300,100));
+    ImGui::SetWindowSize(ImVec2(300,150));
     ImGui::Text("Team:");
     ImGui::Text("Karl Zakhary, Pascal Neubert, Ao Gao");
     ImGui::Text("FPS:  %.3f", 1.0 / io.DeltaTime);
+    
+    std::string currentSimulation =
+        fmt::format("Current simulation: {}", core->CurrentPipeline == 0
+                                                  ? "Fluid simulation"
+                                                  : "Smoke simulation");
+    ImGui::Text(currentSimulation.c_str());
+    if (ImGui::Button("Change simulation")){
+        fmt::print("Switching to: {}\n", core->CurrentPipeline == 0
+                                                  ? "Fluid simulation"
+                                                  : "Smoke simulation");
+        core->CurrentPipeline = (core->CurrentPipeline + 1) % 2;
+    }
     ImGui::End();
     // Add UI stuffs here
     ImGui::Render();

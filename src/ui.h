@@ -4,10 +4,12 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 #include <vulkan/vulkan.h>
+#include <fmt/format.h>
 
 #include <array>
 
 #include "core.h"
+#include "config.h"
 
 class UserInterface {
 public:

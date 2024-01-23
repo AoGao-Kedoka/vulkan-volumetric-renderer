@@ -39,6 +39,7 @@ public:
 
     VkCommandPool commandPool;
 
+    int CurrentPipeline = 0;
     void CreateDevices()
     {
         pickPhysicalDevice();

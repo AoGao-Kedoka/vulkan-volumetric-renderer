@@ -70,7 +70,9 @@ private:
     void createComputeDescriptorSetLayout();
     void createGraphicsDescriptorSetLayout();
     void createGraphicsPipeline();
-    void createComputePipeline();
+    void createComputePipeline(std::string computeShaderPath,
+                               VkPipelineLayout& computeLayout,
+                               VkPipeline& computePipeline);
     void createFramebuffers();
     void createCommandPool();
     void createShaderStorageBuffers();
@@ -148,13 +150,17 @@ private:
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkRenderPass renderPass;
-    VkPipelineLayout graphicsPipelineLayout;
-    VkPipeline graphicsPipeline;
 
     VkDescriptorSetLayout computeDescriptorSetLayout;
     VkDescriptorSetLayout graphicsDescriptorSetLayout;
-    VkPipelineLayout computePipelineLayout;
-    VkPipeline computePipeline;
+
+    VkPipelineLayout computeFluidPipelineLayout; // pipeline flag 0
+    VkPipeline computeFluidPipeline;
+    VkPipelineLayout computeSmokePipelineLayout; // pipeline flag 1
+    VkPipeline computeSmokePipeline;
+
+    VkPipelineLayout graphicsPipelineLayout;
+    VkPipeline graphicsPipeline;
 
     std::vector<Buffer> shaderStorageBuffers;
 
