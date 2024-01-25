@@ -2,7 +2,7 @@
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 800;
-const uint32_t PARTICLE_COUNT = 8192;
+const uint32_t PARTICLE_COUNT = 3;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -55,6 +55,7 @@ void Application::cleanup()
     computeStorageTexture.Cleanup();
     causticTexture.Cleanup();
     computeCloudNoiseTexture.Cleanup();
+    computeCloudBlueNoiseTexture.Cleanup();
 
     vkDestroyPipeline(core.device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(core.device, graphicsPipelineLayout, nullptr);
@@ -374,7 +375,7 @@ void Application::createRenderPass()
 
 void Application::createComputeDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 4> layoutBindings{};
+    std::array<VkDescriptorSetLayoutBinding, 5> layoutBindings{};
 
     // Storage texture
     layoutBindings[0].binding = 0;
@@ -404,6 +405,14 @@ void Application::createComputeDescriptorSetLayout()
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     layoutBindings[3].pImmutableSamplers = nullptr;
     layoutBindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // Blue Noise texture sampler
+    layoutBindings[4].binding = 4;
+    layoutBindings[4].descriptorCount = 1;
+    layoutBindings[4].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[4].pImmutableSamplers = nullptr;
+    layoutBindings[4].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -674,7 +683,7 @@ void Application::createShaderStorageBuffers()
     std::default_random_engine rndEngine((unsigned)time(nullptr));
     std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 
-    // Initial particle positions on a circle
+    // Initial particle positions on a sphere
     std::vector<Particle> particles(PARTICLE_COUNT);
     int z = 0;
     for (auto& particle : particles) {
@@ -688,6 +697,20 @@ void Application::createShaderStorageBuffers()
         particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
                                    rndDist(rndEngine), 1.0f);
         ++z;
+//        float r = 0.25f * cbrt(rndDist(rndEngine));  // Use cbrt for cube root
+//        float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
+//        float phi = acos(1 - 2 * rndDist(rndEngine));
+//
+//        float x = r * sin(phi) * cos(theta);
+//        float y = r * sin(phi) * sin(theta);
+//        float z = r * cos(phi);
+//        int i = static_cast<int>(z) ;
+//        int s = i % 4 + 1;
+//        particle.position = glm::vec4(x, y, z, (6 - s) * 0.25);
+//        particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
+//        particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
+//                                   rndDist(rndEngine), 1.0f);
+//        ++z;
     }
 
     VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
@@ -782,6 +805,10 @@ void Application::createComputeDescriptorSets()
         &core, FilePath::computeCloudNoiseTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
     computeCloudNoiseTexture.CreateImageView().CreateImageSampler();
 
+    computeCloudBlueNoiseTexture = Texture{
+        &core, FilePath::computeCloudBlueNoiseTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
+    computeCloudBlueNoiseTexture.CreateImageView().CreateImageSampler();
+
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                computeDescriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -797,7 +824,7 @@ void Application::createComputeDescriptorSets()
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 5> descriptorWrites{};
 
         VkDescriptorImageInfo computeStorageTextureInfo{};
         computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -853,6 +880,19 @@ void Application::createComputeDescriptorSets()
         descriptorWrites[3].pImageInfo = &noiseTextureInfo;
         descriptorWrites[3].dstBinding = 3;
         descriptorWrites[3].descriptorCount = 1;
+        // Noise texture sampler
+        VkDescriptorImageInfo blueNoiseTextureInfo{
+            computeCloudBlueNoiseTexture.GetSampler(),
+            computeCloudBlueNoiseTexture.GetImageView(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+        descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[4].dstSet = computeDescriptorSets[i];
+        descriptorWrites[4].descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[4].pImageInfo = &blueNoiseTextureInfo;
+        descriptorWrites[4].dstBinding = 4;
+        descriptorWrites[4].descriptorCount = 1;
 
         vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
                                descriptorWrites.data(), 0, nullptr);

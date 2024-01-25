@@ -15,4 +15,6 @@ struct FilePath {
         "./textures/caustic.jpg"};
     inline const static std::string computeCloudNoiseTexturePath{
         "./textures/noise.png"};
+    inline const static std::string computeCloudBlueNoiseTexturePath{
+        "./textures/blue_noise.png"};
 };

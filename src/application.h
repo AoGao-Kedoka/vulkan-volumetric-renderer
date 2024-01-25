@@ -34,6 +34,7 @@
 struct UniformBufferObject {
     float deltaTime = 1.0f;
     float totalTime = 0.0f;
+    int frame = 0;
 };
 
 struct Particle {
@@ -134,6 +135,7 @@ private:
         UniformBufferObject ubo{};
         ubo.deltaTime = lastFrameTime * 2.0f;
         ubo.totalTime = glfwGetTime();
+        ubo.frame++;
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
@@ -176,6 +178,7 @@ private:
     Texture computeStorageTexture;
     Texture causticTexture;
     Texture computeCloudNoiseTexture;
+    Texture computeCloudBlueNoiseTexture;
 
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
