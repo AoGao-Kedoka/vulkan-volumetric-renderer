@@ -34,7 +34,7 @@
 struct UniformBufferObject {
     float deltaTime = 1.0f;
     float totalTime = 0.0f;
-    int frame = 0;
+    uint32_t frame = 0;
 };
 
 struct Particle {
@@ -135,7 +135,7 @@ private:
         UniformBufferObject ubo{};
         ubo.deltaTime = lastFrameTime * 2.0f;
         ubo.totalTime = glfwGetTime();
-        ubo.frame++;
+        ubo.frame = frames;
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
@@ -186,6 +186,7 @@ private:
     std::vector<VkFence> inFlightFences;
     std::vector<VkFence> computeInFlightFences;
     uint32_t currentFrame = 0;
+    uint32_t frames = 0;
 
     float lastFrameTime = 0.0f;
     bool framebufferResized = false;
