@@ -31,19 +31,9 @@
 #include "texture.h"
 #include "ui.h"
 
-struct UniformBufferObject {
-    float deltaTime = 1.0f;
-    float totalTime = 0.0f;
-};
-
-struct Particle {
-    glm::vec4 position;  // position.w -> scale of particle;
-    glm::vec3 velocity;
-    glm::vec4 color;
-};
-
 class Application {
 public:
+    ~Application() { glfwTerminate();}
     void run()
     {
         initWindow();
@@ -134,7 +124,8 @@ private:
         UniformBufferObject ubo{};
         ubo.deltaTime = lastFrameTime * 2.0f;
         ubo.totalTime = glfwGetTime();
-
+        ubo.sunPosition = glm::vec3(uiInterface.GetSunPositionFromUIInput()[0], uiInterface.GetSunPositionFromUIInput()[1], uiInterface.GetSunPositionFromUIInput()[2]);
+        
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 

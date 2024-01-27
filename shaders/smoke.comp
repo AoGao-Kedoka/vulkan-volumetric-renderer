@@ -1,24 +1,32 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_debug_printf : enable
 
-const vec3 SUN_POSITION = vec3(1.0, 0.0, 0.0);
+const float Tmin = 2;
+const float Tmax = 100;
+const float Ka  = 0.2;
 const float MARCH_SIZE = 0.08;
 
+// soft shadow
+const int K  = 32;
+
 struct Particle {
-    vec4 position;
-    vec3 velocity;
-    vec4 color;
+	vec4 position;
+	vec3 velocity;
+	vec4 color;
 };
 
 layout(binding = 0, rgba8) uniform image2D storageTexture;
 
 layout (binding = 1) uniform ParameterUBO {
-    float deltaTime;
-    float totalTime;
+	float deltaTime;
+	float totalTime;
+	vec3 sunPosition;
+	vec3 cameraPosition;
 } ubo;
 
 layout(std140, binding = 2) buffer ParticleSSBO {
-    Particle particles[];
+	Particle particles[];
 };
 
 layout(binding = 3) uniform sampler2D noiseTexture;
@@ -28,98 +36,154 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 
 #define MAX_STEPS 100
+float scene(vec3 p, inout int flag);
 
 float sdSphere(vec3 p, float radius) {
-    return length(p) - radius;
+	return length(p) - radius;
+}
+
+float sdPlane( vec3 p, vec3 n, float h )
+{
+	// n must be normalized
+	return dot(p,n) + h;
+}
+
+float sdRoundBox( vec3 p, vec3 b, float r )
+{
+	vec3 q = abs(p) - b;
+	return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
+}
+
+vec3 calcNormal( in vec3  p ) 
+{
+	const float h = 0.0001;
+	const vec2 k = vec2(1,-1);
+	int flag = 0;
+	return normalize( k.xyy*scene( p + k.xyy*h, flag) + 
+			k.yyx*scene( p + k.yyx*h, flag ) + 
+			k.yxy*scene( p + k.yxy*h, flag ) + 
+			k.xxx*scene( p + k.xxx*h, flag ));
 }
 
 float noise(vec3 x ) {
-    vec3 p = floor(x);
-    vec3 f = fract(x);
-    f = f*f*(3.0-2.0*f);
+	vec3 p = floor(x);
+	vec3 f = fract(x);
+	f = f*f*(3.0-2.0*f);
 
-    vec2 uv = (p.xy+vec2(37.0,239.0)*p.z) + f.xy;
-    vec2 tex = textureLod(noiseTexture,(uv+0.5)/256.0,0.0).yx;
+	vec2 uv = (p.xy+vec2(37.0,239.0)*p.z) + f.xy;
+	vec2 tex = textureLod(noiseTexture,(uv+0.5)/256.0,0.0).yx;
 
-    return mix( tex.x, tex.y, f.z ) * 2.0 - 1.0;
+	return mix( tex.x, tex.y, f.z ) * 2.0 - 1.0;
 }
 
 float fbm(vec3 p) {
-    vec3 q = p + ubo.totalTime * 0.5 * vec3(1.0, -0.2, -1.0);
-    float g = noise(q);
+	vec3 q = p + ubo.totalTime * 0.5 * vec3(1.0, -0.2, -1.0);
+	float g = noise(q);
 
-    float f = 0.0;
-    float scale = 0.5;
-    float factor = 2.02;
+	float f = 0.0;
+	float scale = 0.5;
+	float factor = 2.02;
 
-    for (int i = 0; i < 6; i++) {
-        f += scale * noise(q);
-        q *= factor;
-        factor += 0.21;
-        scale *= 0.5;
-    }
+	for (int i = 0; i < 6; i++) {
+		f += scale * noise(q);
+		q *= factor;
+		factor += 0.21;
+		scale *= 0.5;
+	}
 
-    return f;
+	return f;
 }
 
-float scene(vec3 p) {
-    float distance = sdSphere(p, 1.0);
-
-    float f = fbm(p);
-
-    return -distance + f;
-}
-
-vec4 raymarch(vec3 rayOrigin, vec3 rayDirection) {
-    float depth = 0.0;
-    vec3 p = rayOrigin + depth * rayDirection;
-    vec3 sunDirection = normalize(SUN_POSITION);
-
-    vec4 res = vec4(0.0);
-
-    for (int i = 0; i < MAX_STEPS; i++) {
-        float density = scene(p);
-
-        // We only draw the density if it's greater than 0
-        if (density > 0.0) {
-            // Directional derivative
-            // For fast diffuse lighting
-            float diffuse = clamp((scene(p) - scene(p + 0.3 * sunDirection)) / 0.3, 0.0, 1.0 );
-            vec3 lin = vec3(0.60,0.60,0.75) * 1.1 + 0.8 * vec3(1.0,0.6,0.3) * diffuse;
-            vec4 color = vec4(mix(vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), density), density );
-            color.rgb *= lin;
-            color.rgb *= color.a;
-            res += color * (1.0 - res.a);
-        }
-
-        depth += MARCH_SIZE;
-        p = rayOrigin + depth * rayDirection;
+float softshadow( in vec3 ro, in vec3 rd)
+{
+    float res = 1.0;
+	int flag  = 0;
+    for( float t=Tmin; t<Tmax; )
+    {
+        float h = -scene(ro + rd*t, flag);
+        if( h<0.001 )
+            return 0.0;
+        res = min( res, K*h/t );
+        t += h;
     }
-
     return res;
 }
 
+
+// flag: 0 = ground, 1 = smoke
+float scene(vec3 p, inout int flag) {
+	float distance = sdSphere(p, 1.0);
+	float overlap = min(distance, sdPlane(p, vec3(0, -1, 0), 2));
+
+	if (overlap == distance) flag = 1;
+	else flag = 0;
+
+	distance = overlap;
+	float f = fbm(p);
+	return flag == 1 ? -distance  + f: -distance;
+}
+
+vec4 raymarch(vec3 rayOrigin, vec3 rayDirection) {
+	float depth = 0.0;
+	vec3 p = rayOrigin + depth * rayDirection;
+	vec3 sunDirection = normalize(ubo.sunPosition);
+	int flag = 0;
+
+	vec4 res = vec4(0.0);
+
+	for (int i = 0; i < MAX_STEPS; i++) {
+		float density = scene(p, flag);
+
+		if (density > 0.0) {
+				// We only draw the density if it is greater than 0
+				// Directional derivative
+				// For fast diffuse lighting
+				float diffuse = clamp((scene(p, flag) - scene(p + 0.3 * sunDirection, flag)) / 0.3, 0.0, 1.0 );
+				float sd = softshadow(p, normalize(ubo.sunPosition - p));
+				diffuse *= sd * 0.5;
+				vec3 lin = vec3(0.60,0.60,0.75) * 1.1 + 0.8 * vec3(1.0,0.6,0.3) * diffuse;
+
+				vec4 color = vec4(1,1,1,1);
+				if (flag == 1)
+                    color = vec4(mix(vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), density), density );
+                else
+                    color = vec4(0.8,0.8,0.8,1.0);
+
+				color.rgb *= lin;
+				color.rgb *= color.a;
+				res += color * (1.0 - res.a);
+		}
+
+		depth += MARCH_SIZE;
+		p = rayOrigin + depth * rayDirection;
+	}
+
+	// gamma correction
+	return sqrt(res);
+}
+
 void main() {
-    vec2 screenSize = imageSize(storageTexture);
-    float horizontalCoefficient = (2.0 * float(gl_GlobalInvocationID.x) / screenSize.x) - 1.0;
-    float verticalCoefficient = (2.0 * float(gl_GlobalInvocationID.y) / screenSize.y) - 1.0;
+	vec2 screenSize = imageSize(storageTexture);
+	float horizontalCoefficient = (2.0 * float(gl_GlobalInvocationID.x) / screenSize.x) - 1.0;
+	float verticalCoefficient = (2.0 * float(gl_GlobalInvocationID.y) / screenSize.y) - 1.0;
 
-    // hard coded camera position
-    vec3 ro = vec3(0, 0, 5.0);
-    vec3 rd = normalize(vec3(horizontalCoefficient, verticalCoefficient, -1.0));
+	// hard coded camera position
+	vec3 ro = ubo.cameraPosition;
+	vec3 rd = normalize(vec3(horizontalCoefficient, verticalCoefficient, -1.0));
 
-    // Sun and Sky
-    vec3 sunDirection = normalize(SUN_POSITION);
-    float sun = clamp(dot(sunDirection, rd), 0.0, 1.0 );
-    // Base sky color
-    vec3 color = vec3(0.7,0.7,0.90);
-    // Add vertical gradient
-    color -= 0.8 * vec3(0.90,0.75,0.90) * rd.y;
-    // Add sun color to sky
-    color += 0.5 * vec3(1.0,0.5,0.3) * pow(sun, 10.0);
+	// Sun and Sky
+	vec3 sunDirection = normalize(ubo.sunPosition);
+	float sun = clamp(dot(sunDirection, rd), 0.0, 1.0 );
+	// Base sky color
+	vec3 color = vec3(0.7,0.7,0.90);
+	// Add vertical gradient
+	color -= 0.8 * vec3(0.90,0.75,0.90) * rd.y;
+	// Add sun color to sky
+	color += 0.5 * vec3(1.0,0.5,0.3) * pow(sun, 10.0);
 
-    vec4 res = raymarch(ro, rd);
-    color = color * (1.0 - res.a) + res.rgb;
+	vec4 res = raymarch(ro, rd);
 
-    imageStore(storageTexture, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
+	color = color * (1.0 - res.a) + res.rgb;
+
+	imageStore(storageTexture, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
 }
