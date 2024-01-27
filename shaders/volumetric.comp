@@ -20,40 +20,160 @@ layout(std140, binding = 2) buffer ParticleSSBO {
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-// hard coded sphere position
-vec3 spherePos = vec3(3, 0, 0);
-float sphereRadius = 1.0;
+// contains sdf value and gradient but also particle color
+struct LiquiSDD {
+    float val;
+    vec3 grad;
+    vec3 col;
+};
 
-float distance_from_sphere(in vec3 p, in vec3 c, float r)
+/* SHADER PARAMS */
+// particles
+int particleCount = 64;      // particle count
+// light data
+vec3 lightPos = vec3(2.5, -2.5, -5.);  // position of single light source
+vec3 lightColor = vec3(1,1,1);         // light color
+vec3 ambientLight = vec3(1,1,1);       // ambient light color
+float ambientFactor = 0.25;            // intensity of ambient light
+float diffuseFactor = 1.0;             // intensity of diffuse light
+float specularFactor = 1.0;            // intensity of specular light
+float intensity = 16.0;                 // more intensity, means more energy, giving it more reach
+// camera data
+vec3 cameraPos = vec3(0., 1.25, -3.);  // position of the camera
+// liquid properties
+float density = 0.25;               // global density of liquid, used to determine step size and beer lambert calculation
+float viscosity = 12.0;             // determines how close particles need to be until they (dis)connect
+float refractionFactor = 1.33;      // refraction factor of the liquid (water = 1.33, air = 1.0)
+
+// create sdf for a sphere
+// (sdf.x, gradient.yzw)
+LiquiSDD sdSphere(in vec3 p, in vec3 c, in float r, in vec3 color)
 {
-    return length(p - c) - r;
+    LiquiSDD liquid;
+    liquid.val = length(p - c) - r;
+    liquid.grad = normalize(p - c);
+    liquid.col = color;
+    return liquid;
+}
+
+// combine two sdfs with union
+LiquiSDD sdUnion(in LiquiSDD liq1, in LiquiSDD liq2)
+{
+    LiquiSDD res;
+    res.val = min(liq1.val, liq2.val);
+    res.grad = (liq1.val < liq2.val) ? liq1.grad : liq2.grad;
+    res.col = (liq1.val < liq2.val) ? liq1.col : liq2.col;
+    return res;
+}
+
+// smooth minimum - https://iquilezles.org/articles/smin/
+// returns: vec2 (sdf value, mix factor)
+vec2 sminN( float a, float b, float k, float n )
+{
+    float h = max( k-abs(a-b), 0.0 )/k;
+    float m = pow(h, n)*0.5;
+    float s = m*k/n; 
+    return (a<b) ? vec2(a-s,m) : vec2(b-s,1.0-m);
+}
+
+LiquiSDD sdSmoothUnion(in LiquiSDD liq1, in LiquiSDD liq2, in float k, in float n)
+{
+    LiquiSDD res;
+    vec2 smoothRes = sminN(liq1.val, liq2.val, k, n);
+    res.val = smoothRes.x;
+    res.grad = mix(liq1.grad, liq2.grad, smoothRes.y);
+    res.col = mix(liq1.col, liq2.col, smoothRes.y);
+    return res;
+}
+
+// This is where we create our SDF and sample it with the current position
+LiquiSDD map(in vec3 p)
+{
+    return -1;
+    // start with the first particle
+    LiquiSDD liq = sdSphere(p, particles[0].position.xyz, particles[0].position.w, particles[0].color.rgb);
+    // how many particles?
+    // combining all particles
+    for(int i = 1; i < particleCount; i++)
+    {
+        // note, the k and n value change how smoothmin behaves, these values also allow us to simulate the viscosity
+        // higher n means it can stretch further
+        liq = sdSmoothUnion(liq, sdSphere(p, particles[i].position.xyz, particles[1].position.w, particles[i].color.rgb), 0.5, viscosity);
+    }
+    return liq;
+ }
+
+ // calculates beer lambert law
+ float BeerLambert(float absorptionCoefficient, float distanceTraveled)
+{
+    return exp(-absorptionCoefficient * distanceTraveled);
 }
 
 vec3 ray_march(in vec3 ro, in vec3 rd)
 {
     float total_distance_traveled = 0.0;
-    const int NUMBER_OF_STEPS = 32;
+    const int NUMBER_OF_STEPS = 1024;
     const float MINIMUM_HIT_DISTANCE = 0.001;
     const float MAXIMUM_TRACE_DISTANCE = 1000.0;
+
+    float unabsorbedEnergy = 1.f;
+
+    vec3 color = vec3(0,0,0);
+    bool inside = false;
 
     for (int i = 0; i < NUMBER_OF_STEPS; ++i)
     {
         vec3 current_position = ro + total_distance_traveled * rd;
 
-        float distance_to_closest = distance_from_sphere(current_position, spherePos, sphereRadius);
+        LiquiSDD liq = map(current_position);
+        float distance_to_closest = liq.val;
 
         if (distance_to_closest < MINIMUM_HIT_DISTANCE)
         {
-            return vec3(1.0, 0.0, 0.0);
-        }
+            // entered first time
+            if(!inside)
+            {
+                // refraction param: air=1.0, water=1.33, curr_medium / next_medium
+                rd = refract(rd, -liq.grad, 1. / refractionFactor);
+                inside = true;
+                // specular, reflection
+                vec3 reflection = reflect(rd, liq.grad);
+                color += specularFactor * pow(max(0., dot(reflection, lightPos - current_position)), 100.0) * lightColor;
+            }
+            float prevRestEnergy = unabsorbedEnergy;
+            unabsorbedEnergy *= BeerLambert(1.0, density);
 
-        if (total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
+            total_distance_traveled += density;
+            float absorptionThisStep = prevRestEnergy - unabsorbedEnergy;
+            // diffuse light
+            float distToLight = length(lightPos - current_position);
+            vec3 currLightColor = lightColor * intensity / distToLight; // attenuation function: 1/dist
+            color += diffuseFactor * liq.col * currLightColor * absorptionThisStep;
+            // ambient light
+            color += ambientFactor * liq.col * ambientLight * absorptionThisStep;
+            if(unabsorbedEnergy <= 0.f) 
+            {
+                break;
+            }
+        }
+        else if( total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
         {
             break;
         }
-        total_distance_traveled += distance_to_closest;
+        else
+        {
+            total_distance_traveled += distance_to_closest;
+            // refract when leaving
+            if(inside)
+            {
+                // refraction param: air=1.0, water=1.33, curr_medium / next_medium, water => air
+                rd = refract(rd, liq.grad, refractionFactor);
+                inside = false;
+            }
+        }
+        
     }
-    return vec3(0.0);
+    return color;
 }
 
 void main() {
@@ -61,9 +181,8 @@ void main() {
     float horizontalCoefficient = (2.0 * float(gl_GlobalInvocationID.x) / screenSize.x) - 1.0;
     float verticalCoefficient = (2.0 * float(gl_GlobalInvocationID.y) / screenSize.y) - 1.0;
 
-    // hard coded camera position
-    vec3 ro = vec3(0, 0, 0);
-    vec3 rd = normalize(vec3(1.0, horizontalCoefficient, verticalCoefficient));
+    vec3 ro = cameraPos;
+    vec3 rd = normalize(vec3(horizontalCoefficient, verticalCoefficient, 1.0));
 
     vec3 color = ray_march(ro, rd);
 

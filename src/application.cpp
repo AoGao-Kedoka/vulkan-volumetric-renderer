@@ -2,7 +2,7 @@
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 800;
-const uint32_t PARTICLE_COUNT = 8192;
+const uint32_t PARTICLE_COUNT = 64;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -674,20 +674,20 @@ void Application::createShaderStorageBuffers()
     std::default_random_engine rndEngine((unsigned)time(nullptr));
     std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 
-    // Initial particle positions on a circle
-    std::vector<Particle> particles(PARTICLE_COUNT);
-    int z = 0;
+    // Initial particle positions on a grid
+    std::vector<Particle> particles(PARTICLE_COUNT); //PARTICLE_COUNT
+    int count = 0;
+    int width = sqrt(PARTICLE_COUNT);
+    float stride = 0.25f;
     for (auto& particle : particles) {
-        float r = 0.25f * sqrt(rndDist(rndEngine));
-        float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
-        float x = r * cos(theta) * HEIGHT / WIDTH;
-        float y = r * sin(theta);
-        int s = z % 4 + 1;
-        particle.position = glm::vec4(x, y, z, (6 - s) * .25);
-        particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
-        particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
-                                   rndDist(rndEngine), 1.0f);
-        ++z;
+        // stride * (offset + iterator)
+        float x = stride * ( -float( width) / 2.f + count % width) + stride * 0.5;
+        float z = stride * (-float(width) / 2.f + count / width) + stride * 0.5;
+        particle.position = glm::vec4(x, 0.0f, 0.0f, 1.f);
+        particle.velocity = glm::normalize(glm::vec3(1.f, 0.f, 0.f)) * 0.0f;
+        particle.color = glm::vec4(0.0f, 0.125f,
+                                   0.5f, 1.0f);
+        ++count;
     }
 
     VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
