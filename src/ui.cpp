@@ -77,6 +77,9 @@ void UserInterface::Render()
                                                   : "Smoke simulation");
         core->CurrentPipeline = (core->CurrentPipeline + 1) % 2;
     }
+
+    ImGui::SliderFloat3("Sun position", uiSunPosition, -5.0f, 5.0f);
+    if (uiSunPosition[1] > 0) uiSunPosition[1] = -0.001; // sun should never go under the ground
     ImGui::End();
     // Add UI stuffs here
     ImGui::Render();

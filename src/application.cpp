@@ -103,8 +103,6 @@ void Application::cleanup()
     vkDestroyInstance(core.instance, nullptr);
 
     glfwDestroyWindow(core.window);
-
-    glfwTerminate();
 }
 
 void Application::mainLoop()
@@ -113,7 +111,6 @@ void Application::mainLoop()
         glfwPollEvents();
         uiInterface.Render();
         drawFrame();
-
         double currentTime = glfwGetTime();
         lastFrameTime = (currentTime - lastTime) * 1000.0;
         lastTime = currentTime;
@@ -174,6 +171,7 @@ void Application::createInstance()
         createInfo.pNext =
             (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
 
+#ifdef __APPLE__
         VkValidationFeatureEnableEXT enabled[] = {
             VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
         VkValidationFeaturesEXT features{
@@ -183,6 +181,8 @@ void Application::createInstance()
         features.pDisabledValidationFeatures = nullptr;
         features.pEnabledValidationFeatures = enabled;
         createInfo.pNext = &features;
+#endif
+
         populateDebugMessengerCreateInfo(debugCreateInfo);
     } else {
         createInfo.enabledLayerCount = 0;
