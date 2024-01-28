@@ -12,7 +12,7 @@ const float MARCH_SIZE = 0.16;
 #define ABSORPTION_COEFFICIENT 0.9
 #define SCATTERING_ANISO 0.3
 #define PI 3.14159265359
-#define EPSILON 0.001;
+#define EPSILON 0.0001
 
 // soft shadow
 const int K  = 32;
@@ -65,11 +65,6 @@ float HenyeyGreenstein(float g, float mu) {
     return (1.0 / (4.0 * PI))  * ((1.0 - gg) / pow(1.0 + gg - 2.0 * g * mu, 1.5));
 }
 
-float hash1(float n)
-{
-    return fract(n*17.0*fract(n*0.3183099));
-}
-
 float sdRoundBox(vec3 p, vec3 b, float r)
 {
     vec3 q = abs(p) - b;
@@ -87,6 +82,18 @@ vec3 calcNormal(in vec3  p)
     k.xxx*scene(p + k.xxx*h, flag));
 }
 
+// --------------------------------------------//
+//               Noise Functions
+// --------------------------------------------//
+// Taken from Inigo Quilez's Rainforest ShaderToy:
+// https://www.shadertoy.com/view/4ttSWf
+float hash1(float n)
+{
+    return fract(n*17.0*fract(n*0.3183099));
+}
+
+// Taken from Inigo Quilez's Rainforest ShaderToy:
+// https://www.shadertoy.com/view/4ttSWf
 float noise(in vec3 x)
 {
     vec3 p = floor(x);
@@ -140,33 +147,39 @@ float scene(vec3 p, inout int flag) {
     float distance1 = sdSphere(p - vec3(5.0, 0.0, 0.0), 1.5);
     float distance2 = sdSphere(p + vec3(0, 1.0, 0.0), 1.0);
     float distance3 = sdSphere(p - vec3(-3, -1.0, 0.0), 1.0);
-    float distance =min(min(distance1, distance2), distance3);
+    float distance = min(min(distance1, distance2), distance3);
     float overlap = min(distance, sdPlane(p, vec3(0, -1, 0), 3));
 
     if (overlap == distance) {
-        flag = 1; // Flag indicating the point is above the ground
+        flag = 1;// Flag indicating the point is above the ground
     } else {
-        flag = 0; // Flag indicating the point is on or below the ground
+        flag = 0;// Flag indicating the point is on or below the ground
     }
 
     distance = overlap;
-    float f = fbm(p);
-    return flag == 1 ? -distance  + f : -distance;
+
+    // Add noise only when above the ground
+    if (flag == 1) {
+        vec3 fbmCoord = (p + 2 * vec3(ubo.totalTime, 0.0, ubo.totalTime)) / 1.5;
+        float f = 5.0 * fbm(fbmCoord / 3.2);
+        return -distance + fbm(p);
+    } else {
+        return -distance;
+    }
 }
 
 float lightmarch(vec3 position, vec3 rayDirection, int flag) {
     vec3 sunDirection = normalize(ubo.sunPosition);
     float totalDensity = 0.0;
     float marchSize = 0.03;
-    // Check if we hit the ground
-    if (flag == 0 && position.y <= -1.0) {
-        return 1;
-    }
+
     for (int step = 0; step < MAX_STEPS_LIGHTS; step++) {
         position += sunDirection * marchSize * float(step);
 
         float lightSample = scene(position, flag);
-
+        if (flag == 0) {
+            return BeersLaw(lightSample, 1);
+        }
 
 
         totalDensity += lightSample;
@@ -194,7 +207,7 @@ float softshadow(in vec3 ro, in vec3 rd)
 float raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
     int flag = 0;
     float depth = 0.0;
-	depth += MARCH_SIZE * offset + EPSILON;
+    depth += MARCH_SIZE * offset + EPSILON;
     vec3 p = rayOrigin + depth * rayDirection;
     vec3 sunDirection = normalize(ubo.sunPosition);
 
@@ -213,7 +226,11 @@ float raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
             float sd = softshadow(p, normalize(ubo.sunPosition - p));
 
             totalTransmittance *= lightTransmittance;
-            lightEnergy += totalTransmittance * luminance * sd * 0.5;
+            if (flag == 0) {
+                lightEnergy += totalTransmittance * sd * 0.5 * density;
+            } else {
+                lightEnergy += totalTransmittance * luminance * sd * 0.5;
+            }
         }
 
         depth += MARCH_SIZE;
