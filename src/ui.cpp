@@ -61,11 +61,11 @@ void UserInterface::Render()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::Begin("Volumetric Rendering Window");
-    ImGui::SetWindowSize(ImVec2(300,150));
-    ImGui::Text("Team:");
+    ImGui::SeparatorText("Team:");
     ImGui::Text("Karl Zakhary, Pascal Neubert, Ao Gao");
-    ImGui::Text("FPS:  %.3f", 1.0 / io.DeltaTime);
+    ImGui::Separator();
     
+    ImGui::Text("FPS:  %.3f", 1.0 / io.DeltaTime);
     std::string currentSimulation =
         fmt::format("Current simulation: {}", core->CurrentPipeline == 0
                                                   ? "Fluid simulation"
@@ -80,6 +80,12 @@ void UserInterface::Render()
 
     ImGui::SliderFloat3("Sun position", uiSunPosition, -5.0f, 5.0f);
     if (uiSunPosition[1] > 0) uiSunPosition[1] = -0.001; // sun should never go under the ground
+
+    if (ImGui::CollapsingHeader("Movement")) {
+        ImGui::BulletText("WSAD: Forward, Backward, Left, Right");
+        ImGui::BulletText("Space: up");
+        ImGui::BulletText("Ctrl: down");
+    }
     ImGui::End();
     // Add UI stuffs here
     ImGui::Render();

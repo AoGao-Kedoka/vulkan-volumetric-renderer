@@ -119,6 +119,10 @@ private:
         core.endSingleTimeCommands(commandBuffer);
     }
 
+    bool isKeyPressed(GLFWwindow* window, int key) {
+        return glfwGetKey(window, key) == GLFW_PRESS;
+    }
+
     void updateUniformBuffer(uint32_t currentImage)
     {
         UniformBufferObject ubo{};
@@ -126,6 +130,27 @@ private:
         ubo.totalTime = glfwGetTime();
         ubo.sunPosition = glm::vec3(uiInterface.GetSunPositionFromUIInput()[0], uiInterface.GetSunPositionFromUIInput()[1], uiInterface.GetSunPositionFromUIInput()[2]);
         ubo.frame = frames;
+
+        if (isKeyPressed(core.window, GLFW_KEY_W)) {
+            cameraPos += glm::vec3(0, 0, -0.01);
+        }
+        if (isKeyPressed(core.window, GLFW_KEY_S)) {
+            cameraPos += glm::vec3(0, 0, 0.01);
+        }
+        if (isKeyPressed(core.window, GLFW_KEY_LEFT_CONTROL)) {
+            cameraPos += glm::vec3(0, 0.01, 0);
+        }
+        if (isKeyPressed(core.window, GLFW_KEY_SPACE)) {
+            cameraPos += glm::vec3(0, -0.01, 0);
+        }
+        if (isKeyPressed(core.window, GLFW_KEY_A)) {
+            cameraPos += glm::vec3(-0.01, 0, 0);
+        }
+        if (isKeyPressed(core.window, GLFW_KEY_D)) {
+            cameraPos += glm::vec3(0.01, 0, 0);
+        }
+
+        ubo.cameraPosition = cameraPos;
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
@@ -156,6 +181,7 @@ private:
 
     std::vector<Buffer> shaderStorageBuffers;
 
+    glm::vec3 cameraPos = glm::vec3(0, 0, 7);
     std::vector<Buffer> uniformBuffers;
     std::vector<void *> uniformBuffersMapped;
 
