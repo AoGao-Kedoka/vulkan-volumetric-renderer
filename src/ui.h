@@ -19,7 +19,17 @@ public:
     void RecordToCommandBuffer(VkCommandBuffer commandBuffer);
     void Cleanup();
 
+    std::array<float, 3> GetSunPositionFromUIInput()
+    {
+        std::array<float, 3> res{};
+        std::copy(std::begin(uiSunPosition), std::end(uiSunPosition),
+                  std::begin(res));
+        return res;
+    }
+
 private:
     Core *core;
     VkDescriptorPool imguiPool{};
+
+    float uiSunPosition[3] = {0.0f, -5.0f, 0.0f};
 };
