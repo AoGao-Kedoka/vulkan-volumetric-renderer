@@ -128,7 +128,7 @@ private:
         UniformBufferObject ubo{};
         ubo.deltaTime = lastFrameTime * 2.0f;
         ubo.totalTime = glfwGetTime();
-        ubo.sunPosition = glm::vec3(uiInterface.GetSunPositionFromUIInput()[0], uiInterface.GetSunPositionFromUIInput()[1], uiInterface.GetSunPositionFromUIInput()[2]);
+        ubo.sunPosition = glm::vec3(uiInterface.GetSunPositionFromUIInput()[0], uiInterface.GetSunPositionFromUIInput()[1] - 5, uiInterface.GetSunPositionFromUIInput()[2]);
         ubo.frame = frames;
 
         if (isKeyPressed(core.window, GLFW_KEY_W)) {

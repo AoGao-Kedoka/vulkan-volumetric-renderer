@@ -2,11 +2,11 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_debug_printf : enable
 
-#define MAX_STEPS 60
-const float Tmin = 1;
-const float Tmax = 1000;
+#define MAX_STEPS 200
+const float Tmin = 0.5;
+const float Tmax = 10;
 const float Ka  = 0.2;
-const float MARCH_SIZE = 0.16;
+const float MARCH_SIZE = 0.08;
 
 #define MAX_STEPS_LIGHTS 6
 #define ABSORPTION_COEFFICIENT 0.9

@@ -78,7 +78,7 @@ void UserInterface::Render()
         core->CurrentPipeline = (core->CurrentPipeline + 1) % 2;
     }
 
-    ImGui::SliderFloat3("Sun position", uiSunPosition, -5.0f, 5.0f);
+    ImGui::SliderFloat3("Sun position", uiSunPosition, -10.0f, 10.0f);
     if (uiSunPosition[1] > 0) uiSunPosition[1] = -0.001; // sun should never go under the ground
 
     if (ImGui::CollapsingHeader("Movement")) {
