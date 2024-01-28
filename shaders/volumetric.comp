@@ -12,6 +12,9 @@ layout(binding = 0, rgba8) uniform image2D storageTexture;
 layout (binding = 1) uniform ParameterUBO {
     float deltaTime;
     float totalTime;
+    vec3 sunPosition;
+    vec3 cameraPosition;
+    int frame;
 } ubo;
 
 layout(std140, binding = 2) buffer ParticleSSBO {
@@ -31,19 +34,18 @@ struct LiquiSDD {
 // particles
 int particleCount = 64;      // particle count
 // light data
-vec3 lightPos = vec3(2.5, -2.5, -5.);  // position of single light source
 vec3 lightColor = vec3(1,1,1);         // light color
 vec3 ambientLight = vec3(1,1,1);       // ambient light color
 float ambientFactor = 0.25;            // intensity of ambient light
 float diffuseFactor = 1.0;             // intensity of diffuse light
-float specularFactor = 1.0;            // intensity of specular light
-float intensity = 16.0;                 // more intensity, means more energy, giving it more reach
-// camera data
-vec3 cameraPos = vec3(0., 1.25, -3.);  // position of the camera
+float specularFactor = 0.75;            // intensity of specular light
+float intensity = 32.0;                 // more intensity, means more energy, giving it more reach
 // liquid properties
 float density = 0.25;               // global density of liquid, used to determine step size and beer lambert calculation
-float viscosity = 12.0;             // determines how close particles need to be until they (dis)connect
+float viscosity = 1.75;             // determines how close particles need to be until they (dis)connect
 float refractionFactor = 1.33;      // refraction factor of the liquid (water = 1.33, air = 1.0)
+float waterShininess = 100.0;       // determines the shininess in the specular term for water
+float energyAbsorption = 0.5;      // water absorption coefficient
 
 // create sdf for a sphere
 // (sdf.x, gradient.yzw)
@@ -53,6 +55,19 @@ LiquiSDD sdSphere(in vec3 p, in vec3 c, in float r, in vec3 color)
     liquid.val = length(p - c) - r;
     liquid.grad = normalize(p - c);
     liquid.col = color;
+    return liquid;
+}
+
+LiquiSDD sdDisplacement(in vec3 p, in LiquiSDD liq, in float height)
+{
+    float frequency = 15.0;
+    LiquiSDD liquid;
+    liquid.val = liq.val + sin(p.x * frequency) * sin(p.y * frequency) * sin(p.z * frequency) * height;
+    float gradX = cos(p.x * frequency) * sin(p.y * frequency) * sin(p.z * frequency) * height;
+    float gradY = sin(p.x * frequency) * cos(p.y * frequency) * sin(p.z * frequency) * height;
+    float gradZ = sin(p.x * frequency) * sin(p.y * frequency) * cos(p.z * frequency) * height;
+    liquid.grad = liq.grad + vec3(gradX, gradY, gradZ);
+    liquid.col = liq.col;
     return liquid;
 }
 
@@ -81,7 +96,7 @@ LiquiSDD sdSmoothUnion(in LiquiSDD liq1, in LiquiSDD liq2, in float k, in float 
     LiquiSDD res;
     vec2 smoothRes = sminN(liq1.val, liq2.val, k, n);
     res.val = smoothRes.x;
-    res.grad = mix(liq1.grad, liq2.grad, smoothRes.y);
+    res.grad = normalize(mix(liq1.grad, liq2.grad, smoothRes.y));
     res.col = mix(liq1.col, liq2.col, smoothRes.y);
     return res;
 }
@@ -89,7 +104,43 @@ LiquiSDD sdSmoothUnion(in LiquiSDD liq1, in LiquiSDD liq2, in float k, in float 
 // This is where we create our SDF and sample it with the current position
 LiquiSDD map(in vec3 p)
 {
-    return -1;
+    // there seems to be something wrong with the particle buffer so let's do it manually
+    // 5x5 grid of particles/spheres moving up and down
+    float particleSize = 0.5;
+    vec3 waterColor = vec3(0.0,0.125,0.5);
+
+    LiquiSDD liq = sdSphere(p, vec3(-2.,cos(ubo.totalTime+4.)*0.25,-2.), particleSize, waterColor);
+
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+3.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+2.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+3.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+4.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
+
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+3.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+2.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+1.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+2.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+3.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+2.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+1.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0, cos(ubo.totalTime)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+1.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+2.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+3.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+2.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+1.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+2.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+3.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+4.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+3.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+2.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+3.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+4.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+    return sdDisplacement(p, liq, 0.03125);
+/*
     // start with the first particle
     LiquiSDD liq = sdSphere(p, particles[0].position.xyz, particles[0].position.w, particles[0].color.rgb);
     // how many particles?
@@ -100,7 +151,7 @@ LiquiSDD map(in vec3 p)
         // higher n means it can stretch further
         liq = sdSmoothUnion(liq, sdSphere(p, particles[i].position.xyz, particles[1].position.w, particles[i].color.rgb), 0.5, viscosity);
     }
-    return liq;
+    return liq;*/
  }
 
  // calculates beer lambert law
@@ -109,9 +160,23 @@ LiquiSDD map(in vec3 p)
     return exp(-absorptionCoefficient * distanceTraveled);
 }
 
+// get a sky color based on the ray direction
+vec3 getSkyColor(in vec3 rd)
+{
+    if(rd.y <= 0)
+    {
+        return vec3(1.0, 1.0, 1.0);
+    }
+    else if(rd.y > 0)
+    {
+        return vec3(0.8, 0.8, 0.0);
+    }
+}
+
 vec3 ray_march(in vec3 ro, in vec3 rd)
 {
     float total_distance_traveled = 0.0;
+    float curr_distance_traveled = 0.0;
     const int NUMBER_OF_STEPS = 1024;
     const float MINIMUM_HIT_DISTANCE = 0.001;
     const float MAXIMUM_TRACE_DISTANCE = 1000.0;
@@ -123,7 +188,7 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 
     for (int i = 0; i < NUMBER_OF_STEPS; ++i)
     {
-        vec3 current_position = ro + total_distance_traveled * rd;
+        vec3 current_position = ro + curr_distance_traveled * rd;
 
         LiquiSDD liq = map(current_position);
         float distance_to_closest = liq.val;
@@ -133,20 +198,24 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
             // entered first time
             if(!inside)
             {
+                curr_distance_traveled = 0.0;
+                // we now go down a new ray, the refracted ray, so we need to update our origin position
+                ro = current_position;
                 // refraction param: air=1.0, water=1.33, curr_medium / next_medium
-                rd = refract(rd, -liq.grad, 1. / refractionFactor);
+                rd = refract(rd, liq.grad, 1. / refractionFactor);
                 inside = true;
                 // specular, reflection
                 vec3 reflection = reflect(rd, liq.grad);
-                color += specularFactor * pow(max(0., dot(reflection, lightPos - current_position)), 100.0) * lightColor;
+                color += specularFactor * pow(max(0., dot(reflection, normalize(sunPosition - current_position))), waterShininess) * lightColor;
             }
             float prevRestEnergy = unabsorbedEnergy;
-            unabsorbedEnergy *= BeerLambert(1.0, density);
+            unabsorbedEnergy *= BeerLambert(energyAbsorption, density);
 
             total_distance_traveled += density;
+            curr_distance_traveled += density;
             float absorptionThisStep = prevRestEnergy - unabsorbedEnergy;
             // diffuse light
-            float distToLight = length(lightPos - current_position);
+            float distToLight = length(sunPosition - current_position);
             vec3 currLightColor = lightColor * intensity / distToLight; // attenuation function: 1/dist
             color += diffuseFactor * liq.col * currLightColor * absorptionThisStep;
             // ambient light
@@ -158,11 +227,12 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
         }
         else if( total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
         {
-            break;
+            return (1. - unabsorbedEnergy) * color + (unabsorbedEnergy) * getSkyColor(rd);
         }
         else
         {
             total_distance_traveled += distance_to_closest;
+            curr_distance_traveled += distance_to_closest;
             // refract when leaving
             if(inside)
             {
@@ -181,7 +251,7 @@ void main() {
     float horizontalCoefficient = (2.0 * float(gl_GlobalInvocationID.x) / screenSize.x) - 1.0;
     float verticalCoefficient = (2.0 * float(gl_GlobalInvocationID.y) / screenSize.y) - 1.0;
 
-    vec3 ro = cameraPos;
+    vec3 ro = cameraPosition;
     vec3 rd = normalize(vec3(horizontalCoefficient, verticalCoefficient, 1.0));
 
     vec3 color = ray_march(ro, rd);
