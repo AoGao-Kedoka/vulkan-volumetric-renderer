@@ -125,7 +125,6 @@ private:
         ubo.deltaTime = lastFrameTime * 2.0f;
         ubo.totalTime = glfwGetTime();
         ubo.sunPosition = glm::vec3(uiInterface.GetSunPositionFromUIInput()[0], uiInterface.GetSunPositionFromUIInput()[1], uiInterface.GetSunPositionFromUIInput()[2]);
-
         ubo.frame = frames;
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));

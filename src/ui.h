@@ -21,7 +21,7 @@ public:
 
     std::array<float, 3> GetSunPositionFromUIInput()
     {
-        std::array<float, 3> res;
+        std::array<float, 3> res{};
         std::copy(std::begin(uiSunPosition), std::end(uiSunPosition),
                   std::begin(res));
         return res;
