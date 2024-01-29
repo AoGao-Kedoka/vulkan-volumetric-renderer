@@ -1,7 +1,7 @@
 #include "application.h"
 
-const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;
+uint32_t WIDTH = 800;
+uint32_t HEIGHT = 600;
 const uint32_t PARTICLE_COUNT = 3;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -9,6 +9,10 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 void Application::initWindow()
 {
     glfwInit();
+
+    const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    WIDTH = mode->width * 0.5f;
+    HEIGHT = mode->height * 0.5f;
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
@@ -790,10 +794,18 @@ void Application::createComputeDescriptorSets()
     computeCloudNoiseTexture = Texture{
         &core, FilePath::computeCloudNoiseTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
     computeCloudNoiseTexture.CreateImageView().CreateImageSampler();
+    computeCloudNoiseTexture.TransitionImageLayout(
+        computeCloudNoiseTexture.GetImage(),
+        computeCloudNoiseTexture.GetFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     computeCloudBlueNoiseTexture = Texture{
         &core, FilePath::computeCloudBlueNoiseTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
     computeCloudBlueNoiseTexture.CreateImageView().CreateImageSampler();
+    computeCloudBlueNoiseTexture.TransitionImageLayout(
+        computeCloudBlueNoiseTexture.GetImage(),
+        computeCloudBlueNoiseTexture.GetFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                computeDescriptorSetLayout);
