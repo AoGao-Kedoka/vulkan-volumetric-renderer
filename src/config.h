@@ -31,12 +31,14 @@ struct UniformBufferObject {
     float totalTime = 0.0f;
     alignas(16) glm::vec3 sunPosition = glm::vec3(0, -5, 0);
     alignas(16) glm::vec3 cameraPosition = glm::vec3(0, 0, 7.0);
+
+    alignas(16) glm::vec3 windDirection;
     uint32_t frame = 0;
 };
 
 struct Particle {
-    glm::vec4 position;  // position.w -> scale of particle;
-    glm::vec3 velocity;
-    glm::vec4 color;
+    alignas(16) glm::vec4 position;  // position.w -> scale of particle;
+    alignas(16) glm::vec3 velocity;
+    alignas(16) glm::vec4 color;
 };
 

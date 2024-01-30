@@ -69,17 +69,18 @@ void UserInterface::Render()
     std::string currentSimulation =
         fmt::format("Current simulation: {}", core->CurrentPipeline == 0
                                                   ? "Fluid simulation"
-                                                  : "Smoke simulation");
+                                                  : "Cloud simulation");
     ImGui::Text(currentSimulation.c_str());
     if (ImGui::Button("Change simulation")){
         fmt::print("Switching to: {}\n", core->CurrentPipeline == 0
                                                   ? "Fluid simulation"
-                                                  : "Smoke simulation");
+                                                  : "Cloud simulation");
         core->CurrentPipeline = (core->CurrentPipeline + 1) % 2;
     }
 
     ImGui::SliderFloat3("Sun position", uiSunPosition, -10.0f, 10.0f);
     if (uiSunPosition[1] > 0) uiSunPosition[1] = -0.001; // sun should never go under the ground
+    if (core->CurrentPipeline == 1)  ImGui::SliderFloat3("Wind direction", uiWindDirection, -2.0f, 2.0f);
 
     if (ImGui::CollapsingHeader("Movement")) {
         ImGui::BulletText("WSAD: Forward, Backward, Left, Right");

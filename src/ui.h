@@ -26,10 +26,18 @@ public:
                   std::begin(res));
         return res;
     }
+    std::array<float, 3> GetWindDirectionFromUIInput()
+    {
+        std::array<float, 3> res{};
+        std::copy(std::begin(uiWindDirection), std::end(uiWindDirection),
+                  std::begin(res));
+        return res;
+    }
 
 private:
     Core *core;
     VkDescriptorPool imguiPool{};
 
     float uiSunPosition[3] = {0.0f, -5.0f, 0.0f};
+    float uiWindDirection[3] = {1, -0.2, 1.0};
 };

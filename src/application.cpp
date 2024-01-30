@@ -2,15 +2,22 @@
 
 uint32_t WIDTH = 800;
 uint32_t HEIGHT = 600;
-const uint32_t PARTICLE_COUNT = 3;
+const uint32_t PARTICLE_COUNT = 5;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+
+const float boxMinX = -2.0;
+const float boxMaxX = 2.0;
+const float boxMinY = -3.0;
+const float boxMaxY = 0.0;
+const float boxMinZ = -2.0;
+const float boxMaxZ = 2.0;
 
 void Application::initWindow()
 {
     glfwInit();
 
-    const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
     WIDTH = mode->width * 0.5f;
     HEIGHT = mode->height * 0.5f;
 
@@ -113,6 +120,7 @@ void Application::mainLoop()
 {
     while (!glfwWindowShouldClose(core.window)) {
         glfwPollEvents();
+        if (core.CurrentPipeline == 1) UpdateParticle(particles);
         uiInterface.Render();
         drawFrame();
         double currentTime = glfwGetTime();
@@ -172,10 +180,9 @@ void Application::createInstance()
         createInfo.enabledLayerCount =
             static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
-        createInfo.pNext =
-            (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
+        // createInfo.pNext =
+        //     (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
 
-#ifdef __APPLE__
         VkValidationFeatureEnableEXT enabled[] = {
             VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
         VkValidationFeaturesEXT features{
@@ -185,7 +192,6 @@ void Application::createInstance()
         features.pDisabledValidationFeatures = nullptr;
         features.pEnabledValidationFeatures = enabled;
         createInfo.pNext = &features;
-#endif
 
         populateDebugMessengerCreateInfo(debugCreateInfo);
     } else {
@@ -684,22 +690,29 @@ void Application::createCommandPool()
 void Application::createShaderStorageBuffers()
 {
     // Initialize particles
-    std::default_random_engine rndEngine((unsigned)time(nullptr));
-    std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
+    //std::default_random_engine rndEngine((unsigned)time(nullptr));
+    //std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
+    std::random_device rd;
+    std::mt19937 mt(rd());
+    std::uniform_real_distribution<double> dist(0.0, 0.1);
 
     // Initial particle positions on a circle
-    std::vector<Particle> particles(PARTICLE_COUNT);
+    particles.resize(PARTICLE_COUNT);
     int z = 0;
+    uint8_t stepX = 0.1;
     for (auto& particle : particles) {
-        float r = 0.25f * sqrt(rndDist(rndEngine));
-        float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
-        float x = r * cos(theta) * HEIGHT / WIDTH;
-        float y = r * sin(theta);
-        int s = z % 4 + 1;
-        particle.position = glm::vec4(x, y, z, (6 - s) * .25);
-        particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
-        particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
-                                   rndDist(rndEngine), 1.0f);
+        // float r = 0.25f * sqrt(rndDist(rndEngine));
+        // float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
+        // float x = r * cos(theta) * HEIGHT / WIDTH;
+        // float y = r * sin(theta);
+        // int s = z % 4 + 1;
+        // particle.position = glm::vec4(x, y, z, (6 - s) * .25);
+        // particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
+        // particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
+        //                            rndDist(rndEngine), 1.0f);
+        particle.position = glm::vec4(-0.3 + z *stepX, 0,0,1);
+        particle.velocity = glm::vec3(dist(mt), dist(mt), dist(mt));
+        particle.color = glm::vec4(1, 1, 1, 1);
         ++z;
     }
 
@@ -799,8 +812,9 @@ void Application::createComputeDescriptorSets()
         computeCloudNoiseTexture.GetFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    computeCloudBlueNoiseTexture = Texture{
-        &core, FilePath::computeCloudBlueNoiseTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
+    computeCloudBlueNoiseTexture =
+        Texture{&core, FilePath::computeCloudBlueNoiseTexturePath,
+                VK_FORMAT_R8G8B8A8_SRGB};
     computeCloudBlueNoiseTexture.CreateImageView().CreateImageSampler();
     computeCloudBlueNoiseTexture.TransitionImageLayout(
         computeCloudBlueNoiseTexture.GetImage(),
@@ -1091,6 +1105,10 @@ void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
             "failed to begin recording compute command buffer!");
     }
 
+    vkCmdUpdateBuffer(commandBuffer,
+                      shaderStorageBuffers[currentFrame].GetBuffer(), 0,
+                      sizeof(Particle) * PARTICLE_COUNT, particles.data());
+
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                       core.CurrentPipeline == 0 ? computeFluidPipeline
                                                 : computeSmokePipeline);
@@ -1293,4 +1311,24 @@ std::vector<const char *> Application::getRequiredExtensions()
 #endif
 
     return extensions;
+}
+
+void Application::UpdateParticle(std::vector<Particle>& particles)
+{
+     // TODO: Change to SPH if have more time, particle bouncing as fake effect
+    for (auto& particle : particles) {
+        particle.position += glm::vec4(glm::vec3(uiInterface.GetWindDirectionFromUIInput()[0],
+                      uiInterface.GetWindDirectionFromUIInput()[1],
+                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.002f;
+        particle.position += glm::vec4(particle.velocity, 0);
+        if (particle.position.x >= boxMaxX || particle.position.x <= boxMinX) {
+            particle.velocity.x = -particle.velocity.x * 0.8;
+        }
+        if (particle.position.y >= boxMaxY || particle.position.y <= boxMinY) {
+            particle.velocity.y = -particle.velocity.y * 0.8;
+        }
+        if (particle.position.z >= boxMaxZ || particle.position.z <= boxMinZ) {
+            particle.velocity.z = -particle.velocity.z * 0.8;
+        }
+    }
 }
