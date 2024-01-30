@@ -1119,7 +1119,7 @@ void Application::recordComputeCommandBuffer(VkCommandBuffer commandBuffer)
                                   : computeSmokePipelineLayout,
         0, 1, &computeDescriptorSets[currentFrame], 0, nullptr);
 
-    vkCmdDispatch(commandBuffer, WIDTH / 16, HEIGHT / 16, 1);
+    vkCmdDispatch(commandBuffer, WIDTH / 16 + 1, HEIGHT / 16 + 1, 1);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to record compute command buffer!");
