@@ -699,7 +699,7 @@ void Application::createShaderStorageBuffers()
     // Initial particle positions on a circle
     particles.resize(PARTICLE_COUNT);
     int z = 0;
-    uint8_t stepX = 0.1;
+    float stepX = 0.1;
     for (auto& particle : particles) {
         // float r = 0.25f * sqrt(rndDist(rndEngine));
         // float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
