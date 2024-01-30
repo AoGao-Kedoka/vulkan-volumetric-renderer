@@ -7,9 +7,9 @@ const uint32_t PARTICLE_COUNT = 5;
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const float boxMinX = -2.0;
-const float boxMaxX = 2.0;
-const float boxMinY = -3.0;
-const float boxMaxY = 0.0;
+const float boxMaxX = 1.0;
+const float boxMinY = -2;
+const float boxMaxY = 1.0;
 const float boxMinZ = -2.0;
 const float boxMaxZ = 2.0;
 
@@ -710,7 +710,7 @@ void Application::createShaderStorageBuffers()
         // particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
         // particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
         //                            rndDist(rndEngine), 1.0f);
-        particle.position = glm::vec4(-0.3 + z *stepX, 0,0,1);
+        particle.position = glm::vec4(-0.3 + z *stepX, 0.0,0,1);
         particle.velocity = glm::vec3(dist(mt), dist(mt), dist(mt));
         particle.color = glm::vec4(1, 1, 1, 1);
         ++z;
@@ -1319,16 +1319,16 @@ void Application::UpdateParticle(std::vector<Particle>& particles)
     for (auto& particle : particles) {
         particle.position += glm::vec4(glm::vec3(uiInterface.GetWindDirectionFromUIInput()[0],
                       uiInterface.GetWindDirectionFromUIInput()[1],
-                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.002f;
+                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.00002f;
         particle.position += glm::vec4(particle.velocity, 0);
         if (particle.position.x >= boxMaxX || particle.position.x <= boxMinX) {
-            particle.velocity.x = -particle.velocity.x * 0.8;
+            particle.velocity.x = -particle.velocity.x;
         }
         if (particle.position.y >= boxMaxY || particle.position.y <= boxMinY) {
-            particle.velocity.y = -particle.velocity.y * 0.8;
+            particle.velocity.y = -particle.velocity.y;
         }
         if (particle.position.z >= boxMaxZ || particle.position.z <= boxMinZ) {
-            particle.velocity.z = -particle.velocity.z * 0.8;
+            particle.velocity.z = -particle.velocity.z;
         }
     }
 }
