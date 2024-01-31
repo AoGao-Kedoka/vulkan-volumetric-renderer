@@ -14,6 +14,10 @@
 #include <set>
 #include <stdexcept>
 #include <vector>
+#include <cmath>
+
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -44,6 +48,9 @@ public:
     }
 
 private:
+    //----------------------------------------------------
+    // Initialization
+    //----------------------------------------------------
     void initWindow();
     void initVulkan();
     void cleanup();
@@ -76,6 +83,9 @@ private:
     void recordCommandBuffer(VkCommandBuffer commandBuffer,
                              uint32_t imageIndex);
     void createSyncObjects();
+    //----------------------------------------------------
+    // Rendering
+    //----------------------------------------------------
     void drawFrame();
     [[nodiscard]] VkShaderModule createShaderModule(
         const std::vector<char>& code) const;
@@ -108,6 +118,21 @@ private:
         vkDestroySwapchainKHR(core.device, swapChain, nullptr);
     }
 
+    //----------------------------------------------------
+    // Physics
+    //----------------------------------------------------
+
+    // Kernel function for 3D SPH
+    float W(double r, double h) {
+        const float coeff = 15.0 / (M_PI * pow(h, 6));
+        const float q = 1 - (r * r) / (h * h);
+        return (q > 0) ? coeff * pow(q, 3) : 0.0;
+    }
+    void UpdateParticle(std::vector<Particle>& particles);
+
+    //----------------------------------------------------
+    // Util
+    //----------------------------------------------------
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
         VkCommandBuffer commandBuffer = core.beginSingleTimeCommands();
@@ -130,6 +155,10 @@ private:
         ubo.totalTime = glfwGetTime();
         ubo.sunPosition = glm::vec3(uiInterface.GetSunPositionFromUIInput()[0], uiInterface.GetSunPositionFromUIInput()[1] - 5, uiInterface.GetSunPositionFromUIInput()[2]);
         ubo.frame = frames;
+        ubo.windDirection =
+            glm::vec3(uiInterface.GetWindDirectionFromUIInput()[0],
+                      uiInterface.GetWindDirectionFromUIInput()[1],
+                      uiInterface.GetWindDirectionFromUIInput()[2]);
 
         if (isKeyPressed(core.window, GLFW_KEY_W)) {
             cameraPos += glm::vec3(0, 0, -0.01);
@@ -209,4 +238,6 @@ private:
     double lastTime = 0.0f;
 
     UserInterface uiInterface{&core};
+
+    std::vector<Particle> particles;
 };

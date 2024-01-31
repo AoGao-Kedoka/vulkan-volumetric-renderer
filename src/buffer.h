@@ -10,6 +10,16 @@ class Buffer {
 public:
     Buffer(Core* core, VkDeviceSize size, VkBufferUsageFlags usage,
            VkMemoryPropertyFlags properties);
+    Buffer(){};
+
+    Buffer& operator=(const Buffer& other) 
+    {
+        this->core = other.core;
+        this->buffer = other.buffer;
+        this->bufferMemory = other.bufferMemory;
+        return *this;
+    }
+    
     VkBuffer GetBuffer() { return buffer; }
     VkDeviceMemory GetDeviceMemory() { return bufferMemory; }
     void Cleanup();
