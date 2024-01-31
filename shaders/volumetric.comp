@@ -38,14 +38,14 @@ vec3 lightColor = vec3(1,1,1);         // light color
 vec3 ambientLight = vec3(1,1,1);       // ambient light color
 float ambientFactor = 0.25;            // intensity of ambient light
 float diffuseFactor = 1.0;             // intensity of diffuse light
-float specularFactor = 0.75;            // intensity of specular light
+float specularFactor = 0.25;            // intensity of specular light
 float intensity = 32.0;                 // more intensity, means more energy, giving it more reach
 // liquid properties
 float density = 0.25;               // global density of liquid, used to determine step size and beer lambert calculation
 float viscosity = 1.75;             // determines how close particles need to be until they (dis)connect
 float refractionFactor = 1.33;      // refraction factor of the liquid (water = 1.33, air = 1.0)
-float waterShininess = 100.0;       // determines the shininess in the specular term for water
-float energyAbsorption = 0.2;      // water absorption coefficient
+float waterShininess = 80.0;       // determines the shininess in the specular term for water
+float energyAbsorption = 0.03;      // water absorption coefficient
 
 // create sdf for a sphere
 // (sdf.x, gradient.yzw)
@@ -60,13 +60,14 @@ LiquiSDD sdSphere(in vec3 p, in vec3 c, in float r, in vec3 color)
 
 LiquiSDD sdDisplacement(in vec3 p, in LiquiSDD liq, in float height)
 {
-    float frequency = 15.0;
+    float frequencyX = 8.0, frequencyY = 9.0, frequencyZ = 8.5;
     LiquiSDD liquid;
-    liquid.val = liq.val + sin(p.x * frequency) * sin(p.y * frequency) * sin(p.z * frequency) * height;
-    float gradX = cos(p.x * frequency) * sin(p.y * frequency) * sin(p.z * frequency) * height;
-    float gradY = sin(p.x * frequency) * cos(p.y * frequency) * sin(p.z * frequency) * height;
-    float gradZ = sin(p.x * frequency) * sin(p.y * frequency) * cos(p.z * frequency) * height;
-    liquid.grad = liq.grad + vec3(gradX, gradY, gradZ);
+    liquid.val = liq.val + (1. - pow(sin(p.x * frequencyX) * sin(p.y * frequencyY) * sin(p.z * frequencyZ), 2.)) * height;
+    float outer = -2. * sin(p.x * frequencyX) * sin(p.y * frequencyY) * sin(p.z * frequencyZ) * height;
+    float gradX = outer * frequencyX * cos(p.x * frequencyX) * sin(p.y * frequencyY) * sin(p.z * frequencyZ);
+    float gradY = outer * frequencyY * sin(p.x * frequencyX) * cos(p.y * frequencyY) * sin(p.z * frequencyZ);
+    float gradZ = outer * frequencyZ * sin(p.x * frequencyX) * sin(p.y * frequencyY) * cos(p.z * frequencyZ);
+    liquid.grad = normalize(liq.grad + vec3(gradX, gradY, gradZ));
     liquid.col = liq.col;
     return liquid;
 }
@@ -106,7 +107,7 @@ LiquiSDD map(in vec3 p)
 {
     // there seems to be something wrong with the particle buffer so let's do it manually
     // 5x5 grid of particles/spheres moving up and down
-    float particleSize = 0.5;
+    float particleSize = 0.66;
     vec3 waterColor = vec3(0.0,0.125,0.5);
 
     LiquiSDD liq = sdSphere(p, vec3(-2.,cos(ubo.totalTime+4.)*0.25,-2.), particleSize, waterColor);
@@ -160,13 +161,26 @@ LiquiSDD map(in vec3 p)
 }
 
 // get a sky color based on the ray direction
-vec3 getSkyColor(in vec3 rd)
+vec3 getSkyColor(in vec3 p, in vec3 rd)
 {
-    if(rd.y <= 0)
+    vec3 sunDir = normalize(ubo.sunPosition - p);
+    // sky
+    if(rd.y + sin(rd.x*20.) * sin(rd.z*20.)*0.125 <= -0.25)
+    {
+        return mix(lightColor, vec3(0.0, 0.25, 1.0), 0.5);
+    }
+    // mountain white
+    else if(rd.y + sin(rd.x*7.5) * sin(rd.z*7.5)*0.0625 <= 0.)
     {
         return vec3(1.0, 1.0, 1.0);
     }
-    else if(rd.y > 0)
+    // mountain grey
+    else if(rd.y <= 0.5)
+    {
+        return vec3(0.6, 0.6, 0.6);
+    }
+    // sandy ground
+    else if(rd.y > 0.5)
     {
         return vec3(0.8, 0.8, 0.0);
     }
@@ -226,10 +240,16 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
         }
         else if( total_distance_traveled > MAXIMUM_TRACE_DISTANCE)
         {
-            // all energy has been absorbed => unabsorbed = 0. => only show ater
-            // no energy has been absorbed => unabsorbed = 1. => only show sky
-            // else mix
-            return (1. - unabsorbedEnergy) * color + (unabsorbedEnergy) * getSkyColor(rd);
+            if(unabsorbedEnergy == 1.0)
+            {
+                // if this ray didn't go through liquid make it sky color
+                return getSkyColor(current_position, rd);
+            }
+            else
+            {
+                // if the ray did go through liquid reduce the effect the sky has on the color
+                return color + (unabsorbedEnergy) * getSkyColor(current_position, rd);
+            }
         }
         else
         {
