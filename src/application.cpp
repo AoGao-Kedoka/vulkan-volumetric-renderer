@@ -7,8 +7,8 @@ const uint32_t PARTICLE_COUNT = 5;
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const float boxMinX = -2.0;
-const float boxMaxX = 1.0;
-const float boxMinY = -2;
+const float boxMaxX = 2.0;
+const float boxMinY = -1;
 const float boxMaxY = 1.0;
 const float boxMinZ = -2.0;
 const float boxMaxZ = 2.0;
@@ -710,7 +710,7 @@ void Application::createShaderStorageBuffers()
         // particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
         // particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
         //                            rndDist(rndEngine), 1.0f);
-        particle.position = glm::vec4(-0.3 + z *stepX, 3,-2,1);
+        particle.position = glm::vec4(-0.3 + z *stepX, 1 ,0,1);
         particle.velocity = glm::vec3(dist(mt), dist(mt), dist(mt));
         particle.color = glm::vec4(1, 1, 1, 1);
         ++z;
@@ -820,6 +820,11 @@ void Application::createComputeDescriptorSets()
         computeCloudBlueNoiseTexture.GetImage(),
         computeCloudBlueNoiseTexture.GetFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    causticTexture =
+        Texture{&core, FilePath::causticTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
+    causticTexture.CreateImageView().CreateImageSampler();
+
 
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                computeDescriptorSetLayout);
@@ -1319,7 +1324,7 @@ void Application::UpdateParticle(std::vector<Particle>& particles)
     for (auto& particle : particles) {
         particle.position += glm::vec4(glm::vec3(uiInterface.GetWindDirectionFromUIInput()[0],
                       uiInterface.GetWindDirectionFromUIInput()[1],
-                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.00002f;
+                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.0002f;
         particle.position += glm::vec4(particle.velocity, 0);
         if (particle.position.x >= boxMaxX || particle.position.x <= boxMinX) {
             particle.velocity.x = -particle.velocity.x;
