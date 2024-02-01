@@ -9,7 +9,7 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 const float boxMinX = -2.0;
 const float boxMaxX = 2.0;
 const float boxMinY = -1;
-const float boxMaxY = 1.0;
+const float boxMaxY = 2.0;
 const float boxMinZ = -2.0;
 const float boxMaxZ = 2.0;
 
@@ -702,7 +702,7 @@ void Application::createShaderStorageBuffers()
     //std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
     std::random_device rd;
     std::mt19937 mt(rd());
-    std::uniform_real_distribution<double> dist(0.0, 0.1);
+    std::uniform_real_distribution<double> dist(-0.1, 0.1);
 
     // Initial particle positions on a circle
     particles.resize(PARTICLE_COUNT);
@@ -1333,16 +1333,26 @@ void Application::UpdateParticle(std::vector<Particle>& particles)
     for (auto& particle : particles) {
         particle.position += glm::vec4(glm::vec3(uiInterface.GetWindDirectionFromUIInput()[0],
                       uiInterface.GetWindDirectionFromUIInput()[1],
-                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.0002f;
+                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.09f;
         particle.position += glm::vec4(particle.velocity, 0);
-        if (particle.position.x >= boxMaxX || particle.position.x <= boxMinX) {
-            particle.velocity.x = -particle.velocity.x;
+        if (particle.position.x >= boxMaxX) {
+            particle.position.x = boxMaxX;
         }
-        if (particle.position.y >= boxMaxY || particle.position.y <= boxMinY) {
-            particle.velocity.y = -particle.velocity.y;
+        else if (particle.position.x <= boxMinX) {
+            particle.position.x = boxMinX;
         }
-        if (particle.position.z >= boxMaxZ || particle.position.z <= boxMinZ) {
-            particle.velocity.z = -particle.velocity.z;
+        if (particle.position.y >= boxMaxY) {
+            particle.position.y = boxMaxY;
+        }
+        else if (particle.position.y <= boxMinY) {
+            particle.position.y = boxMinY;
+        }
+        if (particle.position.z >= boxMaxZ) {
+            particle.position.z = boxMaxZ;
+        }
+        else if (particle.position.z <= boxMinZ)
+        {
+            particle.position.z = boxMinZ;
         }
     }
 }
