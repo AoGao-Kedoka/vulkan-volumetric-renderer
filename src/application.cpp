@@ -385,7 +385,7 @@ void Application::createRenderPass()
 
 void Application::createComputeDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 5> layoutBindings{};
+    std::array<VkDescriptorSetLayoutBinding, 6> layoutBindings{};
 
     // Storage texture
     layoutBindings[0].binding = 0;
@@ -423,6 +423,14 @@ void Application::createComputeDescriptorSetLayout()
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     layoutBindings[4].pImmutableSamplers = nullptr;
     layoutBindings[4].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // Blue Noise texture sampler
+    layoutBindings[5].binding = 5;
+    layoutBindings[5].descriptorCount = 1;
+    layoutBindings[5].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[5].pImmutableSamplers = nullptr;
+    layoutBindings[5].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -824,6 +832,9 @@ void Application::createComputeDescriptorSets()
     causticTexture =
         Texture{&core, FilePath::causticTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
     causticTexture.CreateImageView().CreateImageSampler();
+    causticTexture.TransitionImageLayout(
+        causticTexture.GetImage(), causticTexture.GetFormat(),
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
@@ -841,7 +852,7 @@ void Application::createComputeDescriptorSets()
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::array<VkWriteDescriptorSet, 5> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 6> descriptorWrites{};
 
         VkDescriptorImageInfo computeStorageTextureInfo{};
         computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -911,16 +922,25 @@ void Application::createComputeDescriptorSets()
         descriptorWrites[4].dstBinding = 4;
         descriptorWrites[4].descriptorCount = 1;
 
+        // caustic texture
+        VkDescriptorImageInfo causticTextureInfo{
+            causticTexture.GetSampler(), causticTexture.GetImageView(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+        descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[5].dstSet = computeDescriptorSets[i];
+        descriptorWrites[5].descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[5].pImageInfo = &causticTextureInfo;
+        descriptorWrites[5].dstBinding = 5;
+        descriptorWrites[5].descriptorCount = 1;
+
         vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
                                descriptorWrites.data(), 0, nullptr);
     }
 }
 void Application::createGraphicsDescriptorSets()
 {
-    causticTexture =
-        Texture{&core, FilePath::causticTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
-    causticTexture.CreateImageView().CreateImageSampler();
-
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                graphicsDescriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -945,11 +965,8 @@ void Application::createGraphicsDescriptorSets()
             computeStorageTexture.GetImageView();
         computeStorageTextureInfo.sampler = computeStorageTexture.GetSampler();
 
-        VkDescriptorImageInfo causticTextureInfo{
-            causticTexture.GetSampler(), causticTexture.GetImageView(),
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = graphicsDescriptorSets[i];
         descriptorWrites[0].descriptorType =
@@ -957,14 +974,6 @@ void Application::createGraphicsDescriptorSets()
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].pImageInfo = &computeStorageTextureInfo;
         descriptorWrites[0].descriptorCount = 1;
-
-        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = graphicsDescriptorSets[i];
-        descriptorWrites[1].descriptorType =
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].pImageInfo = &causticTextureInfo;
-        descriptorWrites[1].dstBinding = 1;
-        descriptorWrites[1].descriptorCount = 1;
 
         vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
                                descriptorWrites.data(), 0, nullptr);
