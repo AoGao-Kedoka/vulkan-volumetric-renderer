@@ -12,7 +12,6 @@ const float MARCH_SIZE = 0.08;
 #define ABSORPTION_COEFFICIENT 0.9
 #define SCATTERING_ANISO 0.3
 #define PI 3.14159265359
-#define EPSILON 0.0001
 #define PARTICLE_COUNT 5
 
 // soft shadow
@@ -133,14 +132,14 @@ float noise(in vec3 x)
 }
 
 float fbm(vec3 p) {
-    vec3 q = p + ubo.totalTime * ubo.windDirection;
+    vec3 q = p + ubo.totalTime * 0.5 * ubo.windDirection;
     float g = noise(q);
 
     float f = 0.0;
     float scale = 0.5;
     float factor = 2.02;
 
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 9; i++) {
         f += scale * noise(q);
         q *= factor;
         factor += 0.21;
@@ -170,7 +169,7 @@ float scene(vec3 p, inout int flag) {
 
     // Add noise only when above the ground
     if (flag == 1) {
-        vec3 fbmCoord = (p + 2 * vec3(ubo.totalTime, 0.0, ubo.totalTime)) / 1.5;
+        vec3 fbmCoord = (p + 2 * vec3(ubo.totalTime * 0.5, 0.0, ubo.totalTime * 0.5)) / 1.5;
         float f = 5.0 * fbm(fbmCoord / 3.2);
         return -distance + fbm(p);
     } else {
@@ -187,12 +186,10 @@ float lightmarch(vec3 position, vec3 rayDirection, int flag) {
         position += sunDirection * marchSize * float(step);
 
         float lightSample = scene(position, flag);
-        if (flag == 0) {
-            return BeersLaw(lightSample, 1);
-        }
-
-
         totalDensity += lightSample;
+        if (flag == 0) {
+            return BeersLaw(totalDensity, ABSORPTION_COEFFICIENT);
+        }
     }
 
     float transmittance = BeersLaw(totalDensity, ABSORPTION_COEFFICIENT);
@@ -217,7 +214,7 @@ float softshadow(in vec3 ro, in vec3 rd)
 float raymarch(vec3 rayOrigin, vec3 rayDirection, float offset) {
     int flag = 0;
     float depth = 0.0;
-    depth += MARCH_SIZE * offset + EPSILON;
+    depth += MARCH_SIZE * offset;
     vec3 p = rayOrigin + depth * rayDirection;
     vec3 sunDirection = normalize(ubo.sunPosition);
 
@@ -270,7 +267,7 @@ void main() {
     // Add sun color to sky
     color += 0.5 * vec3(1.0, 0.5, 0.3) * pow(sun, 10.0);
     float blueNoise = texture(blueNoiseTexture, gl_GlobalInvocationID.xy / 1024).r;
-    float offset = fract(blueNoise + float(ubo.frame%32) / sqrt(0.5));
+    float offset = fract(blueNoise + float(ubo.frame % 32) / sqrt(0.5));
 
     // Cloud
     float res = raymarch(ro, rd, offset);

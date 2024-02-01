@@ -29,8 +29,8 @@ struct FilePath {
 struct UniformBufferObject {
     float deltaTime = 1.0f;
     float totalTime = 0.0f;
-    alignas(16) glm::vec3 sunPosition = glm::vec3(0, -5, 0);
-    alignas(16) glm::vec3 cameraPosition = glm::vec3(0, 0, 7.0);
+    alignas(16) glm::vec3 sunPosition;
+    alignas(16) glm::vec3 cameraPosition;
 
     alignas(16) glm::vec3 windDirection;
     uint32_t frame = 0;
