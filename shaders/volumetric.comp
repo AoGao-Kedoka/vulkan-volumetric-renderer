@@ -60,13 +60,14 @@ LiquiSDD sdSphere(in vec3 p, in vec3 c, in float r, in vec3 color)
 
 LiquiSDD sdDisplacement(in vec3 p, in LiquiSDD liq, in float height)
 {
-    float frequencyX = 8.0, frequencyY = 9.0, frequencyZ = 8.5;
+    // add some animation
+    float frequencyX = 8.0 + sin(ubo.totalTime), frequencyY = 9.0 + sin(ubo.totalTime), frequencyZ = 8.5 + sin(ubo.totalTime);
     LiquiSDD liquid;
-    liquid.val = liq.val + (1. - pow(sin(p.x * frequencyX) * sin(p.y * frequencyY) * sin(p.z * frequencyZ), 2.)) * height;
-    float outer = -2. * sin(p.x * frequencyX) * sin(p.y * frequencyY) * sin(p.z * frequencyZ) * height;
-    float gradX = outer * frequencyX * cos(p.x * frequencyX) * sin(p.y * frequencyY) * sin(p.z * frequencyZ);
-    float gradY = outer * frequencyY * sin(p.x * frequencyX) * cos(p.y * frequencyY) * sin(p.z * frequencyZ);
-    float gradZ = outer * frequencyZ * sin(p.x * frequencyX) * sin(p.y * frequencyY) * cos(p.z * frequencyZ);
+    liquid.val = liq.val + (1. - pow(sin((p.x + 3.) * frequencyX) * sin((p.y + 3.) * frequencyY) * sin((p.z + 3.) * frequencyZ), 2.)) * height;
+    float outer = -2. * sin((p.x + 3.) * frequencyX) * sin((p.y + 3.) * frequencyY) * sin((p.z + 3.) * frequencyZ) * height;
+    float gradX = outer * frequencyX * cos((p.x + 3.) * frequencyX) * sin((p.y + 3.) * frequencyY) * sin((p.z + 3.) * frequencyZ);
+    float gradY = outer * frequencyY * sin((p.x + 3.) * frequencyX) * cos((p.y + 3.) * frequencyY) * sin((p.z + 3.) * frequencyZ);
+    float gradZ = outer * frequencyZ * sin((p.x + 3.) * frequencyX) * sin((p.y + 3.) * frequencyY) * cos((p.z + 3.) * frequencyZ);
     liquid.grad = normalize(liq.grad + vec3(gradX, gradY, gradZ));
     liquid.col = liq.col;
     return liquid;
