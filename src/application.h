@@ -16,9 +16,6 @@
 #include <vector>
 #include <cmath>
 
-#define _USE_MATH_DEFINES
-#include <math.h>
-
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -152,7 +149,7 @@ private:
     {
         UniformBufferObject ubo{};
         ubo.deltaTime = lastFrameTime * 2.0f;
-        ubo.totalTime = glfwGetTime();
+        ubo.totalTime = static_cast<float_t>(glfwGetTime());
         ubo.sunPosition = glm::vec3(uiInterface.GetSunPositionFromUIInput()[0], uiInterface.GetSunPositionFromUIInput()[1] - 5, uiInterface.GetSunPositionFromUIInput()[2]);
         ubo.frame = frames;
         ubo.windDirection =
@@ -210,7 +207,7 @@ private:
 
     std::vector<Buffer> shaderStorageBuffers;
 
-    glm::vec3 cameraPos = glm::vec3(0, 0, 7);
+    glm::vec3 cameraPos = glm::vec3(0, 0, 10);
     std::vector<Buffer> uniformBuffers;
     std::vector<void *> uniformBuffersMapped;
 

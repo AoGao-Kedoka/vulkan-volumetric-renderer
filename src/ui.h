@@ -38,6 +38,6 @@ private:
     Core *core;
     VkDescriptorPool imguiPool{};
 
-    float uiSunPosition[3] = {0.0f, -5.0f, 0.0f};
+    float uiSunPosition[3] = {2.0f, -10.0f, 4.0f};
     float uiWindDirection[3] = {1, -0.2, 1.0};
 };

@@ -710,7 +710,7 @@ void Application::createShaderStorageBuffers()
         // particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
         // particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
         //                            rndDist(rndEngine), 1.0f);
-        particle.position = glm::vec4(-0.3 + z *stepX, 0.0,0,1);
+        particle.position = glm::vec4(-0.3 + z *stepX, 3,-2,1);
         particle.velocity = glm::vec3(dist(mt), dist(mt), dist(mt));
         particle.color = glm::vec4(1, 1, 1, 1);
         ++z;
