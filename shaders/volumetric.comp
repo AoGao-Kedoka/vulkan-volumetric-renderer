@@ -51,51 +51,6 @@ float waterShininess = 80.0;       // determines the shininess in the specular t
 float energyAbsorption = 0.03;      // water absorption coefficient
 // sky properties
 vec3 skyColor = vec3(0.0, 0.0, 1.0);    // the color of the cloudless sky
-float fBMCloudAmp = 0.8;                      // start amplitude used for fBM
-float fBMCloudFreq = 1.1;                     // start frequency used for fBM
-int fBMCloudOct = 8;                   // how many octaves (NOTE: fBM has O(fBMCloudOct))
-float fBMCloudGain = 0.5;               // change in amplitude per octave
-float fBMCloudLac = 0.8;                // change in frequency per octave
-float fBMCloudStride = 2.;              // stride per octave
-
-float rand (in vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898,78.233)))*43758.5453123);
-}
-
-// Based on Morgan McGuire @morgan3d
-// https://www.shadertoy.com/view/4dS3Wd
-float noise (in vec2 st) {
-    vec2 i = floor(st);
-    vec2 f = fract(st);
-
-    // Four corners in 2D of a tile
-    float a = rand(i);
-    float b = rand(i + vec2(1.0, 0.0));
-    float c = rand(i + vec2(0.0, 1.0));
-    float d = rand(i + vec2(1.0, 1.0));
-
-    vec2 u = f * f * (3.0 - 2.0 * f);
-
-    return mix(a, b, u.x) +
-            (c - a)* u.y * (1.0 - u.x) +
-            (d - b) * u.x * u.y;
-}
-
-// function for fBM noise
-float fBM(in vec2 pos)
-{   
-    float res = 0.;
-    float currAmp = fBMCloudGain;
-    float currFreq = fBMCloudFreq;
-    for(int i = 0; i < fBMCloudOct; i++)
-    {
-        res += currAmp * noise(currFreq*pos);
-        pos *= fBMCloudStride;
-        currFreq *= fBMCloudLac;
-        currAmp *= fBMCloudGain;
-    }
-    return res;
-}
 
 // create sdf for a sphere
 // (sdf.x, gradient.yzw)
@@ -210,23 +165,20 @@ LiquiSDD map(in vec3 p)
 vec3 getSkyColor(in vec3 p, in vec3 rd)
 {
     vec3 sunDir = normalize(ubo.sunPosition - p);
+    vec3 skyCol = skyColor + abs(fbm_4(rd + vec3(ubo.totalTime*0.015,ubo.totalTime*0.01,0.0))) * 2.5;
     // sky
-    if(rd.y + sin(rd.x*20.) * sin(rd.z*20.)*0.125 <= -0.25)
+    if(rd.y <= 0.3)
     {
-        return skyColor + fBM(p.xz);
+        return skyCol;
     }
-    // mountain white
-    else if(rd.y + sin(rd.x*7.5) * sin(rd.z*7.5)*0.0625 <= 0.)
+    // mix
+    else if(rd.y > 0.3)
     {
-        return vec3(1.0, 1.0, 1.0);
-    }
-    // mountain grey
-    else if(rd.y <= 0.5)
-    {
-        return vec3(0.6, 0.6, 0.6);
+        // from 0.3 to 0.6 -> 0 to 1; (x-0.3) / 0.3
+        return mix(skyCol, vec3(0.8, 0.8, 0.0), min((rd.y - 0.3) / 0.5, 1.0));
     }
     // sandy ground
-    else if(rd.y > 0.5)
+    else
     {
         return vec3(0.8, 0.8, 0.0);
     }
