@@ -7,9 +7,9 @@ const uint32_t PARTICLE_COUNT = 5;
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const float boxMinX = -2.0;
-const float boxMaxX = 1.0;
-const float boxMinY = -2;
-const float boxMaxY = 1.0;
+const float boxMaxX = 2.0;
+const float boxMinY = -1;
+const float boxMaxY = 2.0;
 const float boxMinZ = -2.0;
 const float boxMaxZ = 2.0;
 
@@ -385,7 +385,7 @@ void Application::createRenderPass()
 
 void Application::createComputeDescriptorSetLayout()
 {
-    std::array<VkDescriptorSetLayoutBinding, 5> layoutBindings{};
+    std::array<VkDescriptorSetLayoutBinding, 6> layoutBindings{};
 
     // Storage texture
     layoutBindings[0].binding = 0;
@@ -423,6 +423,14 @@ void Application::createComputeDescriptorSetLayout()
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     layoutBindings[4].pImmutableSamplers = nullptr;
     layoutBindings[4].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // Blue Noise texture sampler
+    layoutBindings[5].binding = 5;
+    layoutBindings[5].descriptorCount = 1;
+    layoutBindings[5].descriptorType =
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layoutBindings[5].pImmutableSamplers = nullptr;
+    layoutBindings[5].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -694,7 +702,7 @@ void Application::createShaderStorageBuffers()
     //std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
     std::random_device rd;
     std::mt19937 mt(rd());
-    std::uniform_real_distribution<double> dist(0.0, 0.1);
+    std::uniform_real_distribution<double> dist(-0.1, 0.1);
 
     // Initial particle positions on a circle
     particles.resize(PARTICLE_COUNT);
@@ -710,7 +718,7 @@ void Application::createShaderStorageBuffers()
         // particle.velocity = glm::normalize(glm::vec3(x, y, z)) * 0.00025f;
         // particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine),
         //                            rndDist(rndEngine), 1.0f);
-        particle.position = glm::vec4(-0.3 + z *stepX, 3,-2,1);
+        particle.position = glm::vec4(-0.3 + z *stepX, 1 ,0,1);
         particle.velocity = glm::vec3(dist(mt), dist(mt), dist(mt));
         particle.color = glm::vec4(1, 1, 1, 1);
         ++z;
@@ -821,6 +829,14 @@ void Application::createComputeDescriptorSets()
         computeCloudBlueNoiseTexture.GetFormat(), VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+    causticTexture =
+        Texture{&core, FilePath::causticTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
+    causticTexture.CreateImageView().CreateImageSampler();
+    causticTexture.TransitionImageLayout(
+        causticTexture.GetImage(), causticTexture.GetFormat(),
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                computeDescriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -836,7 +852,7 @@ void Application::createComputeDescriptorSets()
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        std::array<VkWriteDescriptorSet, 5> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 6> descriptorWrites{};
 
         VkDescriptorImageInfo computeStorageTextureInfo{};
         computeStorageTextureInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -906,16 +922,25 @@ void Application::createComputeDescriptorSets()
         descriptorWrites[4].dstBinding = 4;
         descriptorWrites[4].descriptorCount = 1;
 
+        // caustic texture
+        VkDescriptorImageInfo causticTextureInfo{
+            causticTexture.GetSampler(), causticTexture.GetImageView(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+        descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[5].dstSet = computeDescriptorSets[i];
+        descriptorWrites[5].descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[5].pImageInfo = &causticTextureInfo;
+        descriptorWrites[5].dstBinding = 5;
+        descriptorWrites[5].descriptorCount = 1;
+
         vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
                                descriptorWrites.data(), 0, nullptr);
     }
 }
 void Application::createGraphicsDescriptorSets()
 {
-    causticTexture =
-        Texture{&core, FilePath::causticTexturePath, VK_FORMAT_R8G8B8A8_SRGB};
-    causticTexture.CreateImageView().CreateImageSampler();
-
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
                                                graphicsDescriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
@@ -940,11 +965,8 @@ void Application::createGraphicsDescriptorSets()
             computeStorageTexture.GetImageView();
         computeStorageTextureInfo.sampler = computeStorageTexture.GetSampler();
 
-        VkDescriptorImageInfo causticTextureInfo{
-            causticTexture.GetSampler(), causticTexture.GetImageView(),
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = graphicsDescriptorSets[i];
         descriptorWrites[0].descriptorType =
@@ -952,14 +974,6 @@ void Application::createGraphicsDescriptorSets()
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].pImageInfo = &computeStorageTextureInfo;
         descriptorWrites[0].descriptorCount = 1;
-
-        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = graphicsDescriptorSets[i];
-        descriptorWrites[1].descriptorType =
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].pImageInfo = &causticTextureInfo;
-        descriptorWrites[1].dstBinding = 1;
-        descriptorWrites[1].descriptorCount = 1;
 
         vkUpdateDescriptorSets(core.device, descriptorWrites.size(),
                                descriptorWrites.data(), 0, nullptr);
@@ -1319,16 +1333,26 @@ void Application::UpdateParticle(std::vector<Particle>& particles)
     for (auto& particle : particles) {
         particle.position += glm::vec4(glm::vec3(uiInterface.GetWindDirectionFromUIInput()[0],
                       uiInterface.GetWindDirectionFromUIInput()[1],
-                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.00002f;
+                      uiInterface.GetWindDirectionFromUIInput()[2]),0) * 0.09f;
         particle.position += glm::vec4(particle.velocity, 0);
-        if (particle.position.x >= boxMaxX || particle.position.x <= boxMinX) {
-            particle.velocity.x = -particle.velocity.x;
+        if (particle.position.x >= boxMaxX) {
+            particle.position.x = boxMaxX;
         }
-        if (particle.position.y >= boxMaxY || particle.position.y <= boxMinY) {
-            particle.velocity.y = -particle.velocity.y;
+        else if (particle.position.x <= boxMinX) {
+            particle.position.x = boxMinX;
         }
-        if (particle.position.z >= boxMaxZ || particle.position.z <= boxMinZ) {
-            particle.velocity.z = -particle.velocity.z;
+        if (particle.position.y >= boxMaxY) {
+            particle.position.y = boxMaxY;
+        }
+        else if (particle.position.y <= boxMinY) {
+            particle.position.y = boxMinY;
+        }
+        if (particle.position.z >= boxMaxZ) {
+            particle.position.z = boxMaxZ;
+        }
+        else if (particle.position.z <= boxMinZ)
+        {
+            particle.position.z = boxMinZ;
         }
     }
 }

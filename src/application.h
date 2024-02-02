@@ -119,12 +119,6 @@ private:
     // Physics
     //----------------------------------------------------
 
-    // Kernel function for 3D SPH
-    float W(double r, double h) {
-        const float coeff = 15.0 / (M_PI * pow(h, 6));
-        const float q = 1 - (r * r) / (h * h);
-        return (q > 0) ? coeff * pow(q, 3) : 0.0;
-    }
     void UpdateParticle(std::vector<Particle>& particles);
 
     //----------------------------------------------------

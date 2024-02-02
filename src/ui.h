@@ -39,5 +39,5 @@ private:
     VkDescriptorPool imguiPool{};
 
     float uiSunPosition[3] = {2.0f, -10.0f, 4.0f};
-    float uiWindDirection[3] = {1, -0.2, 1.0};
+    float uiWindDirection[3] = {0.2, -0.2, 1};
 };
