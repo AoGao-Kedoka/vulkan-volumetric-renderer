@@ -97,6 +97,16 @@ LiquiSDD sdSmoothUnion(in LiquiSDD liq1, in LiquiSDD liq2, in float k, in float 
     return res;
 }
 
+float Caustic(vec3 position){
+    float noise = 20 * fbm_4(position / 15.0 + ubo.totalTime / 3.0);
+    float waterNoise = fract(noise);
+    float causticMultiplier = 7.0;
+    return causticMultiplier * 0.027 *  pow(
+                smoothVoronoi(position.xz / 4.0 +
+                          vec2(ubo.totalTime, ubo.totalTime+ 3.0) +
+                          3.0 * vec2(cos(waterNoise), sin(waterNoise))), 5.0);
+}
+
 // This is where we create our SDF and sample it with the current position
 LiquiSDD map(in vec3 p)
 {

@@ -79,3 +79,48 @@ vec2 sminN( float a, float b, float k, float n )
     float s = m*k/n; 
     return (a<b) ? vec2(a-s,m) : vec2(b-s,1.0-m);
 }
+
+float smoothVoronoi( in vec2 x )
+{
+    ivec2 p = ivec2(floor( x ));
+    vec2  f = fract( x );
+
+    float res = 0.0;
+    for( int j=-1; j<=1; j++ )
+    for( int i=-1; i<=1; i++ )
+    {
+        ivec2 b = ivec2( i, j );
+        vec2  r = vec2( b ) - f + noise( vec3(p + b, 0.0) );
+        float d = length( r );
+
+        res += exp( -32.0*d );
+    }
+    return -(1.0/32.0)*log( res );
+}
+
+const mat3 m3  = mat3( 0.00,  0.80,  0.60,
+                      -0.80,  0.36, -0.48,
+                      -0.60, -0.48,  0.64 );
+// Taken from Inigo Quilez's Rainforest ShaderToy:
+// https://www.shadertoy.com/view/4ttSWf
+float fbm( in vec3 x, int iterations )
+{
+    float f = 2.0;
+    float s = 0.5;
+    float a = 0.0;
+    float b = 0.5;
+    for( int i = 0; i<iterations; i++ )
+    {
+        float n = noise(x);
+        a += b*n;
+        b *= s;
+        x = f*m3*x;
+    }
+	return a;
+}
+// Taken from Inigo Quilez's Rainforest ShaderToy:
+// https://www.shadertoy.com/view/4ttSWf
+float fbm_4( in vec3 x )
+{
+    return fbm(x, 4);
+}
