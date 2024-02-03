@@ -3,31 +3,6 @@
 
 #include "utils.glsl"
 
-struct Particle {
-    vec4 position;
-    vec3 velocity;
-    vec4 color;
-};
-
-layout(binding = 0, rgba8) uniform image2D storageTexture;
-
-layout (binding = 1) uniform ParameterUBO {
-    float deltaTime;
-    float totalTime;
-    vec3 sunPosition;
-    vec3 cameraPosition;
-    vec3 windDirection;
-    int frame;
-    int particleBasedFluid;
-} ubo;
-
-layout(std140, binding = 2) buffer ParticleSSBO {
-    Particle particles[];
-};
-
-layout(binding = 3) uniform sampler2D noiseTexture;
-layout (binding = 5, rgba8) uniform image2D causticTexture;
-
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 // contains sdf value and gradient but also particle color
@@ -345,6 +320,9 @@ void main() {
 
     vec3 ro = ubo.cameraPosition;
     vec3 rd = normalize(vec3(horizontalCoefficient, verticalCoefficient, -1.0));
+    vec3 axis = vec3(0,1,0);
+    float angle = ubo.rotationAngle;
+    rd = rotateVector(rd, axis, angle);
 
     vec3 color = ray_march(ro, rd);
 

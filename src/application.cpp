@@ -13,6 +13,8 @@ const float boxMaxY = 2.0;
 const float boxMinZ = -2.0;
 const float boxMaxZ = 2.0;
 
+
+
 void Application::initWindow()
 {
     glfwInit();
@@ -27,6 +29,9 @@ void Application::initWindow()
                                    nullptr, nullptr);
     glfwSetWindowUserPointer(core.window, this);
     glfwSetFramebufferSizeCallback(core.window, framebufferResizeCallback);
+    glfwSetMouseButtonCallback(core.window, mouseCallback);
+
+    glfwSetCursorPosCallback(core.window, cursorPositionCallback);
 }
 
 void Application::initVulkan()
