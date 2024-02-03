@@ -159,6 +159,42 @@ float Caustic(vec3 position){
                           3.0 * vec2(cos(waterNoise), sin(waterNoise))), 5.0);
 }
 
+float diffuse(vec3 n,vec3 l,float p) {
+    return pow(dot(n,l) * 0.4 + 0.6,p);
+}
+float specular(vec3 n,vec3 l,vec3 e,float s) {
+    float nrm = (s + 8.0) / (PI * 8.0);
+    return pow(max(dot(reflect(e,n),l),0.0),s) * nrm;
+}
+// sky
+vec3 getSkyColor(vec3 e) {
+    e.y = (max(e.y,0.0)*0.8+0.2)*0.8;
+    return vec3(pow(1.0-e.y,2.0), 1.0-e.y, 0.6+(1.0-e.y)*0.4) * 1.1;
+}
+
+/**
+Copyrights to TDM https://www.shadertoy.com/view/Ms2SD1
+*/
+vec3 getSeaColor(vec3 p, vec3 n, vec3 l, vec3 eye, vec3 dist) {
+    float fresnel = clamp(1.0 - dot(n,-eye), 0.0, 1.0);
+    fresnel = min(pow(fresnel,3.0), 0.5);
+    const vec3 SEA_BASE = vec3(0.0,0.09,0.18);
+    const vec3 SEA_WATER_COLOR = vec3(0.8,0.9,0.6)*0.6;
+    vec3 reflected = getSkyColor(reflect(eye,n));
+    vec3 refracted = SEA_BASE + diffuse(n,l,80.0) * SEA_WATER_COLOR * 0.12;
+
+    vec3 color = mix(refracted,reflected,fresnel);
+    const float SEA_HEIGHT = 0.6;
+
+    float atten = max(1.0 - dot(dist,dist) * 0.001, 0.0);
+    color += SEA_WATER_COLOR * (p.y - SEA_HEIGHT) * 0.18 * atten;
+
+    color += vec3(specular(n,l,eye,60.0));
+
+    return color;
+}
+
+
 // This is where we create our SDF and sample it with the current position
 LiquiSDD map(in vec3 p)
 {
@@ -216,29 +252,6 @@ LiquiSDD map(in vec3 p)
     return liq;*/
  }
 
-// get a sky color based on the ray direction
-vec3 getSkyColor(in vec3 p, in vec3 rd)
-{
-    vec3 sunDir = normalize(ubo.sunPosition - p);
-    vec3 skyCol = skyColor + abs(fbm_4(rd + vec3(ubo.totalTime*0.015,ubo.totalTime*0.01,0.0))) * 2.5;
-    // sky
-    if(rd.y <= 0.3)
-    {
-        return skyCol;
-    }
-    // mix
-    else if(rd.y > 0.3)
-    {
-        // from 0.3 to 0.6 -> 0 to 1; (x-0.3) / 0.3
-        return mix(skyCol, vec3(0.8, 0.8, 0.0), min((rd.y - 0.3) / 0.5, 1.0));
-    }
-    // sandy ground
-    else
-    {
-        return vec3(0.8, 0.8, 0.0);
-    }
-}
-
 vec3 ray_march(in vec3 ro, in vec3 rd)
 {
     float total_distance_traveled = 0.0;
@@ -271,9 +284,6 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
                 // refraction param: air=1.0, water=1.33, curr_medium / next_medium
                 rd = refract(rd, liq.grad, 1. / refractionFactor);
                 inside = true;
-                // specular, reflection
-                vec3 reflection = reflect(rd, liq.grad);
-                color += specularFactor * pow(max(0., dot(reflection, normalize(ubo.sunPosition - current_position))), waterShininess) * lightColor;
             }
             float prevRestEnergy = unabsorbedEnergy;
             unabsorbedEnergy *= BeersLaw(energyAbsorption, density);
@@ -284,8 +294,12 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
             // diffuse light
             float distToLight = length(ubo.sunPosition - current_position);
             vec3 currLightColor = lightColor * intensity / distToLight; // attenuation function: 1/dist
-            color += diffuseFactor * liq.col * currLightColor * absorptionThisStep;
-            // ambient light
+
+            color = mix(
+                getSkyColor(rd),
+                getSeaColor(current_position,liq.grad,normalize(currLightColor),rd,ubo.sunPosition - current_position),
+                pow(smoothstep(0.0,-0.02,rd.y),0.2)
+            );
             color += ambientFactor * liq.col * ambientLight * absorptionThisStep;
             if(unabsorbedEnergy <= 0.f) 
             {
@@ -297,12 +311,12 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
             if(unabsorbedEnergy == 1.0)
             {
                 // if this ray didn't go through liquid make it sky color
-                return getSkyColor(current_position, rd);
+                return getSkyColor(rd);
             }
             else
             {
                 // if the ray did go through liquid reduce the effect the sky has on the color
-                return color + (unabsorbedEnergy) * getSkyColor(current_position, rd);
+                return color + (unabsorbedEnergy) * getSkyColor(rd);
             }
         }
         else
