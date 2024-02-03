@@ -128,23 +128,25 @@ float smoothVoronoi( in vec2 x )
 const mat3 m3  = mat3( 0.00,  0.80,  0.60,
                       -0.80,  0.36, -0.48,
                       -0.60, -0.48,  0.64 );
-// Taken from Inigo Quilez's Rainforest ShaderToy:
-// https://www.shadertoy.com/view/4ttSWf
-float fbm( in vec3 x, int iterations )
-{
-    float f = 2.0;
-    float s = 0.5;
-    float a = 0.0;
-    float b = 0.5;
-    for( int i = 0; i<iterations; i++ )
-    {
-        float n = noise(x);
-        a += b*n;
-        b *= s;
-        x = f*m3*x;
+                      
+float fbm(vec3 p, in int iterations) {
+    vec3 q = p + ubo.totalTime * 0.5 * ubo.windDirection;
+    float g = noise(q);
+
+    float f = 0.0;
+    float scale = 0.5;
+    float factor = 2.02;
+
+    for (int i = 0; i < iterations; i++) {
+        f += scale * noise(q);
+        q *= factor;
+        factor += 0.21;
+        scale *= 0.5;
     }
-	return a;
+
+    return f;
 }
+
 // Taken from Inigo Quilez's Rainforest ShaderToy:
 // https://www.shadertoy.com/view/4ttSWf
 float fbm_4( in vec3 x )

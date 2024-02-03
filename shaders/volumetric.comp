@@ -80,7 +80,7 @@ LiquiSDD sdSmoothUnion(in LiquiSDD liq1, in LiquiSDD liq2, in float k, in float 
 
 LiquiSDD sdWater(in vec3 pos){
     LiquiSDD liquid;
-    vec3 waterColor = vec3(0.0,0.125,0.5);
+    vec3 waterColor = vec3(0.0,0.01,0.25);
     float dis = pos.y + 0.1;
     float amp = 0.5;
     float freq = 1.0;
@@ -98,7 +98,7 @@ LiquiSDD sdWater(in vec3 pos){
     }
     
     // Use noise fbm to add irregular waves
-    dis += fbm(pos.xyz * 1.25, 3);
+    dis += fbm(pos.xyz * 1.25, 2);
     
     // Use texture for finer wave details
     //float texAmp = 0.1 * sin(pos.x * pos.z);
@@ -259,6 +259,10 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
                 // refraction param: air=1.0, water=1.33, curr_medium / next_medium
                 rd = refract(rd, liq.grad, 1. / refractionFactor);
                 inside = true;
+                if (ubo.particleBasedFluid ==1){
+                    vec3 reflection = reflect(rd, liq.grad);
+                    color += specularFactor * pow(max(0., dot(reflection, normalize(ubo.sunPosition - current_position))), waterShininess) * lightColor;
+                }
             }
             float prevRestEnergy = unabsorbedEnergy;
             unabsorbedEnergy *= BeersLaw(energyAbsorption, density);
@@ -270,11 +274,14 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
             float distToLight = length(ubo.sunPosition - current_position);
             vec3 currLightColor = lightColor * intensity / distToLight; // attenuation function: 1/dist
 
-            color = mix(
-                getSkyColor(rd),
-                getSeaColor(current_position,liq.grad,normalize(currLightColor),rd,ubo.sunPosition - current_position),
-                pow(smoothstep(0.0,-0.02,rd.y),0.2)
-            );
+            if (ubo.particleBasedFluid == 1) color += diffuseFactor * liq.col * currLightColor * absorptionThisStep;
+            else{
+                color = mix(
+                    getSkyColor(rd),
+                    getSeaColor(current_position,liq.grad,normalize(currLightColor),rd,ubo.sunPosition - current_position),
+                    pow(smoothstep(0.0,-0.02,rd.y),0.2)
+                );
+            }
             color += ambientFactor * liq.col * ambientLight * absorptionThisStep;
             if(unabsorbedEnergy <= 0.f) 
             {

@@ -80,7 +80,7 @@ void UserInterface::Render()
 
     ImGui::SliderFloat3("Sun position", uiSunPosition, -10.0f, 10.0f);
     if (uiSunPosition[1] > 0) uiSunPosition[1] = -0.001; // sun should never go under the ground
-    if (core->CurrentPipeline == 1) ImGui::SliderFloat3("Wind direction", uiWindDirection, -2.0f, 2.0f);
+    ImGui::SliderFloat3("Wind direction", uiWindDirection, -2.0f, 2.0f);
     if (core->CurrentPipeline == 0)
         ImGui::Checkbox("Particle/Terrain based fluid simulation",
                         &particleBasedFluid);

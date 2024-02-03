@@ -33,27 +33,6 @@ vec3 calcNormal(in vec3  p)
     k.xxx*scene(p + k.xxx*h, flag));
 }
 
-// --------------------------------------------//
-//               Noise Functions
-// --------------------------------------------//
-float fbm(vec3 p) {
-    vec3 q = p + ubo.totalTime * 0.5 * ubo.windDirection;
-    float g = noise(q);
-
-    float f = 0.0;
-    float scale = 0.5;
-    float factor = 2.02;
-
-    for (int i = 0; i < 9; i++) {
-        f += scale * noise(q);
-        q *= factor;
-        factor += 0.21;
-        scale *= 0.5;
-    }
-
-    return f;
-}
-
 // flag: 0 = ground, 1 = smoke
 float scene(vec3 p, inout int flag) {
    float distance = sdSphere(p + particles[0].position.xyz, particles[0].position.w);
@@ -75,8 +54,8 @@ float scene(vec3 p, inout int flag) {
     // Add noise only when above the ground
     if (flag == 1) {
         vec3 fbmCoord = (p + 2 * vec3(ubo.totalTime * 0.5, 0.0, ubo.totalTime * 0.5)) / 1.5;
-        float f = 5.0 * fbm(fbmCoord / 3.2);
-        return -distance + fbm(p);
+        float f = 5.0 * fbm(fbmCoord / 3.2, 6);
+        return -distance + fbm(p, 6);
     } else {
         return -distance;
     }
