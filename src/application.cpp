@@ -8,7 +8,7 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 
 const float boxMinX = -2.0;
 const float boxMaxX = 2.0;
-const float boxMinY = -1;
+const float boxMinY = 0;
 const float boxMaxY = 2.0;
 const float boxMinZ = -2.0;
 const float boxMaxZ = 2.0;
