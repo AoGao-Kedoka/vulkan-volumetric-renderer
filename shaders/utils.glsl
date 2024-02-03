@@ -1,3 +1,30 @@
+layout(binding = 0, rgba8) uniform image2D storageTexture;
+
+layout (binding = 1) uniform ParameterUBO {
+    float deltaTime;
+    float totalTime;
+    vec3 sunPosition;
+    vec3 cameraPosition;
+    vec3 windDirection;
+    int frame;
+    int particleBasedFluid;
+    float rotationAngle;
+} ubo;
+
+struct Particle {
+    vec4 position;
+    vec3 velocity;
+    vec4 color;
+};
+
+layout(std140, binding = 2) buffer ParticleSSBO {
+    Particle particles[];
+};
+
+layout(binding = 3) uniform sampler2D noiseTexture;
+layout(binding = 4) uniform sampler2D blueNoiseTexture;
+layout (binding = 5, rgba8) uniform image2D causticTexture;
+
 #define PI 3.14159265359
 
 float sdSphere(vec3 p, float radius) {
@@ -165,4 +192,31 @@ float fbm(vec2 pos, int iterations) {
     }
     
     return val;
+}
+
+vec3 rotateVector(vec3 direction, vec3 axis, float angle) {
+    // Normalize the axis
+    axis = normalize(axis);
+    
+    // Create a quaternion representing the rotation
+    float s = sin(angle * 0.5);
+    vec4 quaternion = vec4(axis * s, cos(angle * 0.5));
+    
+    // Convert the quaternion to a rotation matrix
+    mat3 rotationMatrix = mat3(
+        1.0 - 2.0 * (quaternion.y * quaternion.y + quaternion.z * quaternion.z),
+        2.0 * (quaternion.x * quaternion.y - quaternion.z * quaternion.w),
+        2.0 * (quaternion.x * quaternion.z + quaternion.y * quaternion.w),
+        
+        2.0 * (quaternion.x * quaternion.y + quaternion.z * quaternion.w),
+        1.0 - 2.0 * (quaternion.x * quaternion.x + quaternion.z * quaternion.z),
+        2.0 * (quaternion.y * quaternion.z - quaternion.x * quaternion.w),
+        
+        2.0 * (quaternion.x * quaternion.z - quaternion.y * quaternion.w),
+        2.0 * (quaternion.y * quaternion.z + quaternion.x * quaternion.w),
+        1.0 - 2.0 * (quaternion.x * quaternion.x + quaternion.y * quaternion.y)
+    );
+    
+    // Rotate the direction vector
+    return rotationMatrix * direction;
 }

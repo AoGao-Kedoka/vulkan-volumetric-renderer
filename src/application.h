@@ -32,6 +32,33 @@
 #include "texture.h"
 #include "ui.h"
 
+static float rotatingAngle = 0;
+static double lastX = 0.0;
+static double lastY = 0.0;
+static bool isDragging = false;
+
+static void mouseCallback(GLFWwindow* window, int button, int action, int mods) {
+if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    if (action == GLFW_PRESS) {
+        isDragging = true;
+        glfwGetCursorPos(window, &lastX, &lastY);
+    } else if (action == GLFW_RELEASE) {
+        isDragging = false;
+    }
+    }
+}
+
+// Cursor position callback function
+static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
+    if (isDragging) {
+        double deltaX = xpos - lastX;
+        double deltaY = ypos - lastY;
+        lastX = xpos;
+        lastY = ypos;
+        rotatingAngle += deltaY * 0.005;
+    }
+}
+
 class Application {
 public:
     ~Application() { glfwTerminate();}
@@ -151,6 +178,11 @@ private:
                       uiInterface.GetWindDirectionFromUIInput()[1],
                       uiInterface.GetWindDirectionFromUIInput()[2]);
         ubo.particleBasedFluid = uiInterface.GetParticleBasedFluid();
+        if (!ubo.particleBasedFluid && core.CurrentPipeline == 0)
+            ubo.rotationY = rotatingAngle;
+        else {
+            ubo.rotationY = 0;
+        }
 
         if (isKeyPressed(core.window, GLFW_KEY_W)) {
             cameraPos += glm::vec3(0, 0, -0.01);
@@ -175,6 +207,7 @@ private:
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
+
 
 private:
     Core core;
