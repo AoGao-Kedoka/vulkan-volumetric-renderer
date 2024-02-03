@@ -124,3 +124,45 @@ float fbm_4( in vec3 x )
 {
     return fbm(x, 4);
 }
+
+float hash21(vec2 uv) {
+    return fract(hash1(uv.x * uv.y));
+}
+
+// Return smooth noise 
+float smoothNoise(vec2 uv) {
+    // Create 1D random value
+    vec2 index = uv;
+    vec2 localUV = fract(index); 
+    vec2 cellID = floor(index); 
+    
+    localUV = localUV*localUV*(3.0 - 2.0 * localUV); // Hermite Curve
+    
+    // Get noise values for corners of each cell (bottom/top right + left, then mix it)
+    float bl = hash21(cellID);
+    float br = hash21(cellID + vec2(1, 0));
+    float b = mix(bl, br, localUV.x);
+    float tl = hash21(cellID + vec2(0, 1));
+    float tr = hash21(cellID + vec2(1, 1));
+    float t = mix(tl, tr, localUV.x);
+    float noiseCol = mix(b, t, localUV.y);
+        
+    return noiseCol;
+}
+
+// Fractal Brownian Motion 
+float fbm(vec2 pos, int iterations) {
+    // Declare return value, amplitude of motion, freq of motion
+    float val = 0.0;
+    float amp = 0.05;
+    float freq = 4.0;
+    
+    // Now loop through layers and return the combined value
+    for (int i=0;i<iterations;i++) {
+        val += amp * smoothNoise(freq * pos); 
+        amp *= 0.5;
+        freq * 2.0;
+    }
+    
+    return val;
+}

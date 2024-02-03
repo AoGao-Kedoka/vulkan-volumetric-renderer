@@ -34,10 +34,14 @@ public:
         return res;
     }
 
+    int GetParticleBasedFluid() { return particleBasedFluid; }
+
 private:
     Core *core;
     VkDescriptorPool imguiPool{};
 
     float uiSunPosition[3] = {2.0f, -10.0f, 4.0f};
     float uiWindDirection[3] = {0.2, -0.2, 1};
+    
+    bool particleBasedFluid = true;
 };

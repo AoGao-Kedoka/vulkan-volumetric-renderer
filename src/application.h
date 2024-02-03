@@ -150,6 +150,7 @@ private:
             glm::vec3(uiInterface.GetWindDirectionFromUIInput()[0],
                       uiInterface.GetWindDirectionFromUIInput()[1],
                       uiInterface.GetWindDirectionFromUIInput()[2]);
+        ubo.particleBasedFluid = uiInterface.GetParticleBasedFluid();
 
         if (isKeyPressed(core.window, GLFW_KEY_W)) {
             cameraPos += glm::vec3(0, 0, -0.01);

@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_debug_printf : enable
 
 #include "utils.glsl"
 
@@ -15,13 +16,16 @@ layout (binding = 1) uniform ParameterUBO {
     float totalTime;
     vec3 sunPosition;
     vec3 cameraPosition;
+    vec3 windDirection;
     int frame;
+    int particleBasedFluid;
 } ubo;
 
 layout(std140, binding = 2) buffer ParticleSSBO {
     Particle particles[];
 };
 
+layout(binding = 3) uniform sampler2D noiseTexture;
 layout (binding = 5, rgba8) uniform image2D causticTexture;
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
@@ -47,7 +51,7 @@ float intensity = 32.0;                 // more intensity, means more energy, gi
 float density = 0.25;               // global density of liquid, used to determine step size and beer lambert calculation
 float viscosity = 1.75;             // determines how close particles need to be until they (dis)connect
 float refractionFactor = 1.33;      // refraction factor of the liquid (water = 1.33, air = 1.0)
-float waterShininess = 80.0;       // determines the shininess in the specular term for water
+float waterShininess = 20.0;       // determines the shininess in the specular term for water
 float energyAbsorption = 0.03;      // water absorption coefficient
 // sky properties
 vec3 skyColor = vec3(0.0, 0.0, 1.0);    // the color of the cloudless sky
@@ -99,6 +103,52 @@ LiquiSDD sdSmoothUnion(in LiquiSDD liq1, in LiquiSDD liq2, in float k, in float 
     return res;
 }
 
+LiquiSDD sdWater(in vec3 pos){
+    LiquiSDD liquid;
+    vec3 waterColor = vec3(0.0,0.125,0.5);
+    float dis = pos.y + 0.1;
+    float amp = 0.5;
+    float freq = 1.0;
+    float iterations = 4.0;
+    float t = ubo.totalTime;
+    
+    // Use FBM for main wave shapes
+    for (float i = 0.0; i < iterations; i += 1.0) {
+        dis += amp * sin(pos.x * freq + i * amp + t * i) * 
+                     sin(pos.y * freq + i * amp + t * i) *
+                     sin(pos.z * freq + -i * amp + t * i);
+        
+        amp *= 0.5;
+        freq *= 2.0;
+    }
+    
+    // Use noise fbm to add irregular waves
+    dis += fbm(pos.xyz * 1.25, 2);
+    
+    // Use texture for finer wave details
+    float texAmp = 0.1 * sin(pos.x * pos.z);
+    float texFreq = 2.0 + 0.2 * pos.z;
+    float texOffset = ubo.totalTime * 0.05;
+    dis += texture(noiseTexture, pos.xz / texFreq + texOffset).r * texAmp * 0.8;
+    liquid.val = -dis;
+    liquid.grad = vec3(0,0,0);
+    liquid.col = waterColor;
+    return liquid;
+}
+
+LiquiSDD map(in vec3 p);
+
+vec3 calcNormal( in vec3 p )
+{
+    float dis = map(p).val;
+    vec2 val = vec2(0.01, 0.0);
+
+    vec3 normal = dis - vec3(map(p - val.xyy).val,
+                             map(p - val.yxy).val,
+                             map(p - val.yyx).val);
+    return normalize(normal);
+}
+
 float Caustic(vec3 position){
     float noise = 20 * fbm_4(position / 15.0 + ubo.totalTime / 3.0);
     float waterNoise = fract(noise);
@@ -114,39 +164,44 @@ LiquiSDD map(in vec3 p)
 {
     // there seems to be something wrong with the particle buffer so let's do it manually
     // 5x5 grid of particles/spheres moving up and down
-    float particleSize = 0.66;
     vec3 waterColor = vec3(0.0,0.125,0.5);
 
-    LiquiSDD liq = sdSphere(p, vec3(-2.,cos(ubo.totalTime+4.)*0.25,-2.), particleSize, waterColor);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+3.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+2.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+3.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+4.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
+    LiquiSDD liq;
+    if (ubo.particleBasedFluid == 1){
+        float particleSize = 0.66;
+        liq = sdSphere(p, vec3(-2.,cos(ubo.totalTime+4.)*0.25,-2.), particleSize, waterColor);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+3.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+2.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+3.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+4.)*0.25,-2.), particleSize, waterColor), 0.5, viscosity);
 
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+3.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+2.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+1.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+2.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+3.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+3.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+2.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+1.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+2.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+3.)*0.25,-1.), particleSize, waterColor), 0.5, viscosity);
 
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+2.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+1.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0, cos(ubo.totalTime)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+1.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+2.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+2.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+1.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(0, cos(ubo.totalTime)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+1.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+2.)*0.25,0.), particleSize, waterColor), 0.5, viscosity);
 
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+3.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+2.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+1.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+2.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+3.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+3.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+2.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+1.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+2.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+3.)*0.25,1.), particleSize, waterColor), 0.5, viscosity);
 
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+4.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+3.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+2.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+3.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
-    liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+4.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
-    return sdDisplacement(p, liq, 0.03125);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-2.,cos(ubo.totalTime+4.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(-1.,cos(ubo.totalTime+3.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(0,cos(ubo.totalTime+2.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+3.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+        liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+4.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
+    } else {
+        liq = sdWater(p - vec3(0, -0.001, 0));
+    }
+    return liq;
 /*
     // start with the first particle
     LiquiSDD liq = sdSphere(p, particles[0].position.xyz, particles[0].position.w, particles[0].color.rgb);
@@ -188,9 +243,9 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
 {
     float total_distance_traveled = 0.0;
     float curr_distance_traveled = 0.0;
-    const int NUMBER_OF_STEPS = 1024;
+    const int NUMBER_OF_STEPS = 100;
     const float MINIMUM_HIT_DISTANCE = 0.001;
-    const float MAXIMUM_TRACE_DISTANCE = 1000.0;
+    const float MAXIMUM_TRACE_DISTANCE = 20.0;
 
     float unabsorbedEnergy = 1.f;
 
@@ -202,10 +257,11 @@ vec3 ray_march(in vec3 ro, in vec3 rd)
         vec3 current_position = ro + curr_distance_traveled * rd;
 
         LiquiSDD liq = map(current_position);
+        if (ubo.particleBasedFluid == 0) liq.grad = calcNormal(current_position);
         float distance_to_closest = liq.val;
 
         if (distance_to_closest < MINIMUM_HIT_DISTANCE)
-        {
+        { 
             // entered first time
             if(!inside)
             {
