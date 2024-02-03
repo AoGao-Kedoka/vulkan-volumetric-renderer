@@ -123,13 +123,13 @@ LiquiSDD sdWater(in vec3 pos){
     }
     
     // Use noise fbm to add irregular waves
-    dis += fbm(pos.xyz * 1.25, 2);
+    dis += fbm(pos.xyz * 1.25, 3);
     
     // Use texture for finer wave details
-    float texAmp = 0.1 * sin(pos.x * pos.z);
-    float texFreq = 2.0 + 0.2 * pos.z;
-    float texOffset = ubo.totalTime * 0.05;
-    dis += texture(noiseTexture, pos.xz / texFreq + texOffset).r * texAmp * 0.8;
+    //float texAmp = 0.1 * sin(pos.x * pos.z);
+    //float texFreq = 2.0 + 0.2 * pos.z;
+    //float texOffset = ubo.totalTime * 0.05;
+    //dis += texture(noiseTexture, pos.xz / texFreq + texOffset).r * texAmp * 0.8;
     liquid.val = -dis;
     liquid.grad = vec3(0,0,0);
     liquid.col = waterColor;
@@ -199,7 +199,7 @@ LiquiSDD map(in vec3 p)
         liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+3.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
         liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+4.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
     } else {
-        liq = sdWater(p - vec3(0, -0.001, 0));
+        liq = sdWater(p - vec3(0, 1, 0));
     }
     return liq;
 /*

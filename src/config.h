@@ -34,7 +34,7 @@ struct UniformBufferObject {
 
     alignas(16) glm::vec3 windDirection;
     uint32_t frame = 0;
-    int particleBasedFluid = 1;
+    int particleBasedFluid;
 };
 
 struct Particle {
