@@ -55,7 +55,7 @@ static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
         double deltaY = ypos - lastY;
         lastX = xpos;
         lastY = ypos;
-        rotatingAngle += deltaY * 0.005;
+        rotatingAngle += deltaX * 0.005;
     }
 }
 
