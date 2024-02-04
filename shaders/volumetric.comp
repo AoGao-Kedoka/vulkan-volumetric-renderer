@@ -210,7 +210,7 @@ LiquiSDD map(in vec3 p)
         liq = sdSmoothUnion(liq, sdSphere(p, vec3(1.,cos(ubo.totalTime+3.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
         liq = sdSmoothUnion(liq, sdSphere(p, vec3(2.,cos(ubo.totalTime+4.)*0.25,2.), particleSize, waterColor), 0.5, viscosity);
     } else {
-        liq = sdWater(p - vec3(0, 1, 0));
+        liq = sdWater(p - vec3(0, 1.5, 0));
     }
     return liq;
 /*
