@@ -40,3 +40,5 @@ CMakePresets.json
 .vs
 .idea
 .*
+
+src/stb_image.h
