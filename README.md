@@ -4,8 +4,7 @@ Volumetric Renderer written in Vulkan.
 ### Team
 Karl Zakhary, Pascal Neubert, Ao Gao
 ### Screenshots
-![Fluid](imgs/fluid.png)
-![cloud](imgs/cloud.png)
+![Volumetric](imgs/volumetric.png)
 ## Build
 ```
 mkdir build && cd build
