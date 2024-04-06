@@ -51,7 +51,7 @@ void UserInterface::Init(uint32_t imageCount, VkRenderPass& renderPass)
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.Allocator = nullptr;
     init_info.CheckVkResultFn = nullptr;
-    ImGui_ImplVulkan_Init(&init_info, renderPass);
+    ImGui_ImplVulkan_Init(&init_info);
 }
 
 void UserInterface::Render()
