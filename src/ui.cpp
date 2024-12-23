@@ -51,6 +51,7 @@ void UserInterface::Init(uint32_t imageCount, VkRenderPass& renderPass)
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
     init_info.Allocator = nullptr;
     init_info.CheckVkResultFn = nullptr;
+    init_info.RenderPass = renderPass;
     ImGui_ImplVulkan_Init(&init_info);
 }
 
@@ -64,22 +65,22 @@ void UserInterface::Render()
     ImGui::SeparatorText("Team:");
     ImGui::Text("Karl Zakhary, Pascal Neubert, Ao Gao");
     ImGui::Separator();
-    
+
     ImGui::Text("FPS:  %.3f", 1.0 / io.DeltaTime);
-    std::string currentSimulation =
-        fmt::format("Current simulation: {}", core->CurrentPipeline == 0
-                                                  ? "Fluid simulation"
-                                                  : "Cloud simulation");
+    std::string currentSimulation = fmt::format(
+        "Current simulation: {}",
+        core->CurrentPipeline == 0 ? "Fluid simulation" : "Cloud simulation");
     ImGui::Text(currentSimulation.c_str());
-    if (ImGui::Button("Change simulation")){
+    if (ImGui::Button("Change simulation")) {
         fmt::print("Switching to: {}\n", core->CurrentPipeline == 0
-                                                  ? "Fluid simulation"
-                                                  : "Cloud simulation");
+                                             ? "Fluid simulation"
+                                             : "Cloud simulation");
         core->CurrentPipeline = (core->CurrentPipeline + 1) % 2;
     }
 
     ImGui::SliderFloat3("Sun position", uiSunPosition, -10.0f, 10.0f);
-    if (uiSunPosition[1] > 0) uiSunPosition[1] = -0.001; // sun should never go under the ground
+    if (uiSunPosition[1] > 0)
+        uiSunPosition[1] = -0.001;  // sun should never go under the ground
     ImGui::SliderFloat3("Wind direction", uiWindDirection, -2.0f, 2.0f);
     if (core->CurrentPipeline == 0)
         ImGui::Checkbox("Particle/Terrain based fluid simulation",
